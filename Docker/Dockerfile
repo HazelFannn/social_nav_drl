@@ -1,4 +1,53 @@
-FROM osrf/ros:noetic-desktop-full
+FROM osrf/ros:noetic-desktop-full as base
+
+FROM base as base-amd64
+
+ENV NVARCH x86_64
+
+ENV NVIDIA_REQUIRE_CUDA "cuda>=12.3 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=525,driver<526 brand=unknown,driver>=525,driver<526 brand=nvidia,driver>=525,driver<526 brand=nvidiartx,driver>=525,driver<526 brand=geforce,driver>=525,driver<526 brand=geforcertx,driver>=525,driver<526 brand=quadro,driver>=525,driver<526 brand=quadrortx,driver>=525,driver<526 brand=titan,driver>=525,driver<526 brand=titanrtx,driver>=525,driver<526 brand=tesla,driver>=535,driver<536 brand=unknown,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=geforce,driver>=535,driver<536 brand=geforcertx,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=titan,driver>=535,driver<536 brand=titanrtx,driver>=535,driver<536"
+ENV NV_CUDA_CUDART_VERSION 12.3.52-1
+ENV NV_CUDA_COMPAT_PACKAGE cuda-compat-12-3
+
+FROM base as base-arm64
+
+ENV NVARCH sbsa
+ENV NVIDIA_REQUIRE_CUDA "CUDA>=12.3"
+ENV NV_CUDA_CUDART_VERSION 12.3.52-1
+
+FROM base-${TARGETARCH}
+
+ARG TARGETARCH
+
+LABEL maintainer "NVIDIA CORPORATION <cudatools@nvidia.com>"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg2 curl ca-certificates && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${NVARCH}/3bf863cc.pub | apt-key add - && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list && \
+    apt-get purge --autoremove -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CUDA_VERSION 12.3.0
+
+# For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cuda-cudart-12-3=${NV_CUDA_CUDART_VERSION} \
+    ${NV_CUDA_COMPAT_PACKAGE} \
+    && rm -rf /var/lib/apt/lists/*
+
+# Required for nvidia-docker v1
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
+    && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
+ENV PATH /usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
+COPY NGC-DL-CONTAINER-LICENSE /
+
+# nvidia-container-runtime
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
 
 
 #system general setup
@@ -30,76 +79,9 @@ RUN mkdir -p ~/.gazebo && \
     git clone https://github.com/osrf/gazebo_models.git && \
     mv gazebo_models models
 
-# # trac-ik setup
-# RUN apt-get update && \
-#     apt-get install -y ros-noetic-trac-ik-kinematics-plugin && \
-#     apt-get -y upgrade && \
-#     /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash'
-
-# ROS UR driver setup
-# RUN cd catkin_ws/src && \
-#     git clone -b melodic-devel https://github.com/ros-industrial/universal_robot.git && \
-#     git clone https://github.com/UniversalRobots/Universal_Robots_ROS_Driver.git && \
-#     cd .. && \
-#     apt update -qq && \
-#     rosdep update && \
-#     rosdep install --from-paths src --ignore-src -y && \
-#     /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash'
-    # cd universal_robot/ur_description/urdf
-    # rm common.gazebo.xacro && \
-    # git clone https://github.com/JensenZhaoUT/modified_files.git
-
-# intel realsense camera setup 
-# RUN mkdir -p /etc/apt/keyrings && \
-#     apt-get update && \
-#     apt-get install -y curl && \
-#     curl -sSf https://librealsense.intel.com/Debian/librealsense.pgp | sudo tee /etc/apt/keyrings/librealsense.pgp > /dev/null && \
-#     echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main" | \
-#     tee /etc/apt/sources.list.d/librealsense.list && \
-#     apt-get update && \
-#     apt-get install -y apt-transport-https && \
-#     apt-get update && \
-#     apt-get install -y librealsense2-dkms && \
-#     apt-get install -y librealsense2-utils && \
-#     apt install -y ros-noetic-librealsense2* && \
-#     apt-get install -y ros-noetic-realsense2-camera
-
-# robotiq gripper setup
-# RUN cd catkin_ws/src && \
-#     git clone https://github.com/TAMS-Group/robotiq.git
-
-# RUN apt-get update && \
-#     /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash; rosdep install -y robotiq_modbus_tcp' && \
-#     apt-get install -y ros-noetic-soem && \
-#     apt-get install ros-noetic-socketcan-interface 
-
-# # conda environment setup
-# RUN pip install pyserial && \
-#     pip install pymodbus==2.2.0 && \
-#     pip install transforms3d
-
-# RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; rosdep update; rosdep install --from-paths src --ignore-src -y; catkin_make;. ./devel/setup.bash'
-
+#TD3 Navigation
+RUN 
 RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
 RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 
-# #conda install
-# RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2019.07-Linux-x86_64.sh -O ~/anaconda.sh\
-#     && /bin/bash ~/anaconda.sh -b -p "/opt/conda" \
-#     && rm ~/anaconda.sh 
-# RUN apt-get -y upgrade
-
-# # Make conda command available to all users
-# RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
-
-# # Activate conda environment with interactive bash session
-# RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
-# RUN /bin/bash -c '. /opt/conda/etc/profile.d/conda.sh; conda activate; pip install transforms3d; pip install rospkg; pip install defusedxml; pip install pyserial; pip install pymodbus==2.2.0'
 RUN echo "ALL Done"
-
-#some common commands to use docker
-#docker run -t -d -v myVolume:/ur_ws/src <image_name>
-#docker exec -it <container_id> bash
-#docker image rm
-#docker build -t <image_name> .
-#docker volume create <volume_name>

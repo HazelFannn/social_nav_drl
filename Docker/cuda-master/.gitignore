@@ -1,0 +1,11 @@
+kitpick/
+.idea/
+__pycache__/
+cudnn_artifactory.json
+tag_manifest_l4t_cuda_l4t
+dist/*/*/base/NGC-DL-CONTAINER-LICENSE
+pytestdebug.log
+opengl/
+pyrightconfig.json
+dist/**/runtime/*entrypoint*
+dist/**/runtime/deviceQuery/
