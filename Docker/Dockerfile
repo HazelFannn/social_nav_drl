@@ -48,8 +48,6 @@ COPY NGC-DL-CONTAINER-LICENSE /
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-
-
 #system general setup
 RUN apt-get update && \
     apt-get -y install ros-noetic-catkin&& \
@@ -80,7 +78,12 @@ RUN mkdir -p ~/.gazebo && \
     mv gazebo_models models
 
 #TD3 Navigation
-RUN 
+RUN apt-get update && \
+    apt install -y nvidia-driver-535 nvidia-dkms-535 && \
+    pip3 install torch && \
+    pip3 install tensorflow && \
+    pip3 install tensorboard && \
+    pip3 install squaternion
 RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
 RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 
