@@ -84,6 +84,7 @@ RUN apt-get update && \
     pip3 install tensorflow && \
     pip3 install tensorboard && \
     pip3 install squaternion
+RUN apt install -y nvidia-cuda-toolkit
 RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
 RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 

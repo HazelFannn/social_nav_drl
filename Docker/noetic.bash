@@ -7,5 +7,5 @@ docker run --rm -it \
     --privileged \
     ros-noetic \
     bash
-docker run --rm -t -d --name drl_container -e DISPLAY=host.docker.internal:-1 -v "C:\Users\hazel\Documents\MEng Project\TD3_Navigation\:/home" -it ros-noetic
+docker run --rm -t -d --name drl_container -e DISPLAY=host.docker.internal:0 -v "C:\Users\hazel\Documents\MEng Project\TD3_Navigation\:/home" -it ros-noetic-nvidia
 docker exec -it <id> bash
