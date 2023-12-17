@@ -85,7 +85,9 @@ RUN apt-get update && \
     pip3 install tensorboard && \
     pip3 install squaternion
 RUN apt install -y nvidia-cuda-toolkit
+
+RUN /bin/bash -c 'cd home; export ROS_HOSTNAME=localhost; export ROS_MASTER_URI=http://localhost:11311; export ROS_PORT_SIM=11311;'
+
 RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
-RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 
 RUN echo "ALL Done"
