@@ -1,4 +1,5 @@
 FROM osrf/ros:noetic-desktop-full as base
+ENV DEBIAN_FRONTEND noninteractive
 
 FROM base as base-amd64
 
@@ -63,31 +64,29 @@ RUN apt-get update && \
     apt-get install -y iputils-ping && \
     mkdir -p /catkin_ws/src
 
-# controller install
-RUN apt-get update && \
-    apt-get install ros-noetic-joint-state-controller && \
-    apt-get install -y ros-noetic-effort-controllers && \
-    apt-get install ros-noetic-position-controllers && \
-    # apt-get install -y ros*controller* && \
-    apt install ros-noetic-joint-state-publisher-gui
-
 # gazebo setup
 RUN mkdir -p ~/.gazebo && \
     cd ~/.gazebo && \
     git clone https://github.com/osrf/gazebo_models.git && \
     mv gazebo_models models
 
-#TD3 Navigation
+# Nvidia driver and cudnn
 RUN apt-get update && \
     apt install -y nvidia-driver-535 nvidia-dkms-535 && \
     pip3 install torch && \
     pip3 install tensorflow && \
     pip3 install tensorboard && \
+    pip3 install packaging && \
     pip3 install squaternion
+
 RUN apt install -y nvidia-cuda-toolkit
 
-RUN /bin/bash -c 'cd home; export ROS_HOSTNAME=localhost; export ROS_MASTER_URI=http://localhost:11311; export ROS_PORT_SIM=11311;'
-
+ENV ROS_HOSTNAME=localhost
+ENV ROS_MASTER_URI=http://localhost:11311
+ENV ROS_PORT_SIM=11311
+ENV GAZEBO_RESOURCE_PATH=/catkin_ws/src/TD3_navigation/TD3_simulator/multi_robot_scenario/launch
+RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash'
 RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
+RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 
 RUN echo "ALL Done"
