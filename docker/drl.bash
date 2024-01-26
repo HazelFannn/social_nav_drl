@@ -7,6 +7,7 @@ docker run --rm -it \
     --env="XAUTHORITY=$XAUTH" \
     --volume="/home/hazel/catkin_ws/src/social_nav_drl:/catkin_ws/src/social_nav_drl" \
     --volume="/dev/bus/usb:/dev/bus/usb" \
+    --gpus all \
     --net=host \
     --privileged \
     drl_image_melodic \
