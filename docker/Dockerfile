@@ -1,68 +1,22 @@
-FROM osrf/ros:noetic-desktop-full as base
+FROM osrf/ros:melodic-desktop-full
 ENV DEBIAN_FRONTEND noninteractive
 
-FROM base as base-amd64
-
-ENV NVARCH x86_64
-
-ENV NVIDIA_REQUIRE_CUDA "cuda>=12.3 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=525,driver<526 brand=unknown,driver>=525,driver<526 brand=nvidia,driver>=525,driver<526 brand=nvidiartx,driver>=525,driver<526 brand=geforce,driver>=525,driver<526 brand=geforcertx,driver>=525,driver<526 brand=quadro,driver>=525,driver<526 brand=quadrortx,driver>=525,driver<526 brand=titan,driver>=525,driver<526 brand=titanrtx,driver>=525,driver<526 brand=tesla,driver>=535,driver<536 brand=unknown,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=geforce,driver>=535,driver<536 brand=geforcertx,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=titan,driver>=535,driver<536 brand=titanrtx,driver>=535,driver<536"
-ENV NV_CUDA_CUDART_VERSION 12.3.52-1
-ENV NV_CUDA_COMPAT_PACKAGE cuda-compat-12-3
-
-FROM base as base-arm64
-
-ENV NVARCH sbsa
-ENV NVIDIA_REQUIRE_CUDA "CUDA>=12.3"
-ENV NV_CUDA_CUDART_VERSION 12.3.52-1
-
-FROM base-${TARGETARCH}
-
-ARG TARGETARCH
-
-LABEL maintainer "NVIDIA CORPORATION <cudatools@nvidia.com>"
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gnupg2 curl ca-certificates && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${NVARCH}/3bf863cc.pub | apt-key add - && \
-    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list && \
-    apt-get purge --autoremove -y curl \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV CUDA_VERSION 12.3.0
-
-# For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cuda-cudart-12-3=${NV_CUDA_CUDART_VERSION} \
-    ${NV_CUDA_COMPAT_PACKAGE} \
-    && rm -rf /var/lib/apt/lists/*
-
-# Required for nvidia-docker v1
-RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
-    && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
-
-ENV PATH /usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64
-
-COPY NGC-DL-CONTAINER-LICENSE /
-
-# nvidia-container-runtime
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-
-#system general setup
+# System general setup
 RUN apt-get update && \
-    apt-get -y install ros-noetic-catkin&& \
-    apt-get -y upgrade && \
-    apt-get install wget && \
-    apt-get install nano && \
-    apt-get install -y git && apt-get install -y python3-pip && \
-    apt install -y ros-noetic-moveit && \
-    apt-get install -y ros-noetic-gazebo-ros-control && \
-    apt-get install -y ros-noetic-ros-control && \
-    apt-get install -y x11-apps && \
-    apt-get install -y ros-noetic-industrial-robot-status-controller && \
-    apt-get install -y iputils-ping && \
+    apt-get install -y wget nano git python3-pip kmod build-essential x11-apps iputils-ping psmisc && \
+    apt-get install -y ros-melodic-catkin ros-melodic-moveit ros-melodic-gazebo-ros-pkgs ros-melodic-gazebo-ros-control ros-melodic-ros-control ros-melodic-industrial-robot-status-controller && \
     mkdir -p /catkin_ws/src
+
+# Install Python 3.7 (or newer version)
+RUN apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y python3.7 python3.7-dev python3.7-venv && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
+
+# Install Python packages
+RUN python3 -m pip install --upgrade pip && \
+    pip3 install torch tensorflow tensorboard packaging squaternion numpy
 
 # gazebo setup
 RUN mkdir -p ~/.gazebo && \
@@ -70,23 +24,37 @@ RUN mkdir -p ~/.gazebo && \
     git clone https://github.com/osrf/gazebo_models.git && \
     mv gazebo_models models
 
-# Nvidia driver and cudnn
-RUN apt-get update && \
-    apt install -y nvidia-driver-535 nvidia-dkms-535 && \
-    pip3 install torch && \
-    pip3 install tensorflow && \
-    pip3 install tensorboard && \
-    pip3 install packaging && \
-    pip3 install squaternion
+# Copy the NVIDIA driver installer into the container
+COPY NVIDIA-Linux-x86_64-535.129.03.run /tmp/NVIDIA-Linux-x86_64-535.129.03.run
 
-RUN apt install -y nvidia-cuda-toolkit
+# Install dependencies for driver installation and other necessary tools
+RUN apt-get update && apt-get install -y \
+    kmod \
+    build-essential
+
+# Make the installer executable and run it
+RUN chmod +x /tmp/NVIDIA-Linux-x86_64-535.129.03.run && \
+    /tmp/NVIDIA-Linux-x86_64-535.129.03.run -a -N --ui=none --no-kernel-module
+
+# Clean up
+RUN rm /tmp/NVIDIA-Linux-x86_64-535.129.03.run
+
+RUN apt-get update && apt install -y nvidia-cuda-toolkit
 
 ENV ROS_HOSTNAME=localhost
 ENV ROS_MASTER_URI=http://localhost:11311
 ENV ROS_PORT_SIM=11311
 ENV GAZEBO_RESOURCE_PATH=/catkin_ws/src/TD3_navigation/TD3_simulator/multi_robot_scenario/launch
-RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash'
-RUN echo ". /opt/ros/noetic/setup.bash" >> ~/.bashrc
+
+RUN cd catkin_ws/src && \
+    git clone https://github.com/srl-freiburg/pedsim_ros.git && \
+    cd pedsim_ros && \
+    git submodule update --init --recursive
+RUN pip3 install pyyaml rospkg attrs
+# RUN cd /catkin_ws/src/social_nav_drl/DRL-robot-navigation/catkin_ws/src/multi_robot_scenario/xacro/p3dx/ && \
+#     find . -iname "*.xacro" | xargs sed -i 's#<\([/]\?\)\(if\|unless\|include\|arg\|property\|macro\|insert_block\)#<\1xacro:\2#g'
+RUN /bin/bash -c '. /opt/ros/melodic/setup.bash; cd /catkin_ws; catkin_make;. ./devel/setup.bash'
+RUN echo ". /opt/ros/melodic/setup.bash" >> ~/.bashrc
 RUN echo ". /catkin_ws/devel/setup.bash" >> ~/.bashrc
 
 RUN echo "ALL Done"

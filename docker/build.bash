@@ -1,1 +1,1 @@
-docker build . -t drl_image
+docker build . -t drl_image_melodic

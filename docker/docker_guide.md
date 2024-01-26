@@ -44,7 +44,7 @@ docker exec -it <id> bash
 
 cd home/catkin
 catkin_make_isolated
-export GAZEBO_RESOURCE_PATH=/home/catkin_ws/src/multi_robot_scenario/launch
+export GAZEBO_RESOURCE_PATH=/catkin_ws/src/social_nav_drl/DRL-robot-navigation/catkin_ws/src/multi_robot_scenario/launch
 source devel_isolated/setup.bash
 python3 train_velodyne_td3.py
 
