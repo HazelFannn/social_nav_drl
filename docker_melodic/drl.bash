@@ -5,6 +5,7 @@ docker run --rm -it \
     --env="DISPLAY=$DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --env="XAUTHORITY=$XAUTH" \
+    --env="XDG_RUNTIME_DIR=/tmp/runtime-root"  \
     --volume="/home/hazel/catkin_ws/src/social_nav_drl:/catkin_ws/src/social_nav_drl" \
     --volume="/dev/bus/usb:/dev/bus/usb" \
     --gpus all \
