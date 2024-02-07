@@ -7,7 +7,7 @@ RUN apt-get update && \
 
 # Update software list and install system layer
 RUN apt-get update && \
-    apt-get install -y lsb-release gnupg2 curl iputils-ping
+    apt-get install -y lsb-release gnupg2 curl
 
 # Install ROS-noetic
     ## Add ROS source
@@ -31,11 +31,12 @@ RUN mkdir -p /catkin_ws/src
 RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; cd /catkin_ws; catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3; . /catkin_ws/devel/setup.bash'
 RUN python3 -m pip install --upgrade pip && \
     pip install wrapt --upgrade --ignore-installed && \
-    pip install torch tensorflow tensorboard packaging squaternion numpy
+    pip install torch tensorflow tensorboard packaging squaternion numpy==1.22.0
 
 ENV ROS_HOSTNAME=localhost
 ENV ROS_MASTER_URI=http://localhost:11311
 ENV ROS_PORT_SIM=11311
+# ENV GAZEBO_RESOURCE_PATH=/catkin_ws/src/DRL-robot-navigation/catkin_ws/src/multi_robot_scenario/launch
 
 RUN cd /catkin_ws/src && \
     git clone https://github.com/srl-freiburg/pedsim_ros.git && \
@@ -50,6 +51,7 @@ RUN pip3 install pyyaml rospkg attrs netifaces
 ENV GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:/catkin_ws/src/gazebo_models_worlds_collection/worlds
 ENV GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/catkin_ws/src/gazebo_models_worlds_collection/models
 ENV LD_LIBRARY_PATH=/opt/hpcx/ompi/lib:$LD_LIBRARY_PATH
+ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 ENV NVIDIA_VISIBLE_DEVICES="all"
 ENV NVIDIA_DRIVER_CAPABILITIES="all"
 WORKDIR /catkin_ws/
