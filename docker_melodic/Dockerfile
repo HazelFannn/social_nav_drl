@@ -56,6 +56,15 @@ RUN pip install \
     rospkg \
     PyQt5
 
+# Install dependencies
+RUN apt-get update && apt-get install -y mesa-utils libgl1-mesa-glx libgl1-mesa-dri && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies for OpenGL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1-mesa-glx \
+        libgl1-mesa-dri && \
+    rm -rf /var/lib/apt/lists/*
+
 # Initialize rosdep
 RUN rosdep init && rosdep update
 ENV ROS_MASTER_URI=http://localhost:11311
