@@ -42,10 +42,12 @@ RUN cd /catkin_ws/src && \
     git clone https://github.com/srl-freiburg/pedsim_ros.git && \
     cd pedsim_ros && \
     git submodule update --init --recursive
-RUN cd /catkin_ws/src && \
-    git clone -b main https://github.com/reiniscimurs/DRL-robot-navigation.git
-RUN cd /catkin_ws/src && \
-    git clone https://github.com/leonhartyao/gazebo_models_worlds_collection.git
+# RUN cd /catkin_ws/src && \
+#     git clone https://github.com/leonhartyao/gazebo_models_worlds_collection.git
+# RUN cd /catkin_ws/src && \
+#     git clone https://github.com/robotics-upo/gazebo_sfm_plugin.git
+# RUN cd /catkin_ws/src && \
+#     git clone https://github.com/robotics-upo/lightsfm.git
 
 RUN pip3 install pyyaml rospkg attrs netifaces
 ENV GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:/catkin_ws/src/gazebo_models_worlds_collection/worlds
