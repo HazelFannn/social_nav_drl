@@ -82,10 +82,10 @@ class GazeboEnv:
         self.set_self_state.model_name = "r1"
         self.set_self_state.pose.position.x = 0.0
         self.set_self_state.pose.position.y = 0.0
-        self.set_self_state.pose.position.z = 0.0
+        self.set_self_state.pose.position.z = 0.2
         self.set_self_state.pose.orientation.x = 0.0
         self.set_self_state.pose.orientation.y = 0.0
-        self.set_self_state.pose.orientation.z = 0.0
+        self.set_self_state.pose.orientation.z = 0.2
         self.set_self_state.pose.orientation.w = 1.0
 
         self.gaps = [[-np.pi / 2 - 0.03, -np.pi / 2 + np.pi / self.environment_dim]]
@@ -267,7 +267,7 @@ class GazeboEnv:
         # set a random goal in empty space in environment
         self.change_goal()
         # randomly scatter boxes in the environment
-        self.random_box()
+        # self.random_box()
         self.publish_markers([0.0, 0.0])
 
         rospy.wait_for_service("/gazebo/unpause_physics")
@@ -352,10 +352,10 @@ class GazeboEnv:
             box_state.model_name = name
             box_state.pose.position.x = x
             box_state.pose.position.y = y
-            box_state.pose.position.z = 0.0
+            box_state.pose.position.z = 0.2
             box_state.pose.orientation.x = 0.0
             box_state.pose.orientation.y = 0.0
-            box_state.pose.orientation.z = 0.0
+            box_state.pose.orientation.z = 0.2
             box_state.pose.orientation.w = 1.0
             self.set_state.publish(box_state)
 
