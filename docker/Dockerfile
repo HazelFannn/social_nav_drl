@@ -43,8 +43,6 @@ RUN cd /catkin_ws/src && \
     cd pedsim_ros && \
     git submodule update --init --recursive
 # RUN cd /catkin_ws/src && \
-#     git clone https://github.com/leonhartyao/gazebo_models_worlds_collection.git
-# RUN cd /catkin_ws/src && \
 #     git clone https://github.com/robotics-upo/gazebo_sfm_plugin.git
 # RUN cd /catkin_ws/src && \
 #     git clone https://github.com/robotics-upo/lightsfm.git
