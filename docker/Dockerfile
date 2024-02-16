@@ -38,14 +38,14 @@ ENV ROS_MASTER_URI=http://localhost:11311
 ENV ROS_PORT_SIM=11311
 # ENV GAZEBO_RESOURCE_PATH=/catkin_ws/src/DRL-robot-navigation/catkin_ws/src/multi_robot_scenario/launch
 
-RUN cd /catkin_ws/src && \
-    git clone https://github.com/srl-freiburg/pedsim_ros.git && \
-    cd pedsim_ros && \
-    git submodule update --init --recursive
+# RUN cd /catkin_ws/src && \
+#     git clone https://github.com/srl-freiburg/pedsim_ros.git && \
+#     cd pedsim_ros && \
+#     git submodule update --init --recursive
 
 RUN pip3 install pyyaml rospkg attrs netifaces
-ENV GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:/catkin_ws/src/gazebo_models_worlds_collection/worlds
-ENV GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/catkin_ws/src/gazebo_models_worlds_collection/models
+ENV GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:/catkin_ws/src/social_nav_drl/gazebo_sfm_plugins/worlds
+ENV GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/catkin_ws/src/social_nav_drl/gazebo_sfm_plugins/media/models
 ENV LD_LIBRARY_PATH=/opt/hpcx/ompi/lib:$LD_LIBRARY_PATH
 ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 ENV NVIDIA_VISIBLE_DEVICES="all"

@@ -73,6 +73,12 @@
       <uri>model://cafe_table</uri>
     </include>
 
+    <include>
+      <name>bar_wall</name>
+      <pose>-0.043896 4.179442 0.689766 -0.000149 -0.000024 -0.048769</pose>
+      <uri>model://bar_wall</uri>
+    </include>
+
     <actor name="actor1">
       <pose>-1 2 1.25 0 0 0</pose>
       <skin>
