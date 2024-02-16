@@ -119,7 +119,7 @@ class GazeboEnv:
         )
         self.unpause = rospy.ServiceProxy("/gazebo/unpause_physics", Empty)
         self.pause = rospy.ServiceProxy("/gazebo/pause_physics", Empty)
-        self.reset_proxy = rospy.ServiceProxy("/gazebo/reset_world", Empty)
+        # self.reset_proxy = rospy.ServiceProxy("/gazebo/reset_world", Empty)
         self.publisher = rospy.Publisher("goal_point", MarkerArray, queue_size=3)
         self.publisher2 = rospy.Publisher("linear_velocity", MarkerArray, queue_size=1)
         self.publisher3 = rospy.Publisher("angular_velocity", MarkerArray, queue_size=1)
@@ -231,74 +231,136 @@ class GazeboEnv:
         reward = self.get_reward(target, collision, action, min_laser)
         return state, reward, done, target
 
+    # def reset(self):
+
+    #     # Resets the state of the environment and returns an initial observation.
+    #     rospy.wait_for_service("/gazebo/reset_world")
+    #     try:
+    #         self.reset_proxy()
+
+    #     except rospy.ServiceException as e:
+    #         print("/gazebo/reset_simulation service call failed")
+
+    #     angle = np.random.uniform(-np.pi, np.pi)
+    #     quaternion = Quaternion.from_euler(0.0, 0.0, angle)
+    #     object_state = self.set_self_state
+
+    #     x = 0
+    #     y = 0
+    #     position_ok = False
+    #     while not position_ok:
+    #         x = np.random.uniform(-4.5, 4.5)
+    #         y = np.random.uniform(-4.5, 4.5)
+    #         position_ok = check_pos(x, y)
+    #     object_state.pose.position.x = x
+    #     object_state.pose.position.y = y
+    #     # object_state.pose.position.z = 0.
+    #     object_state.pose.orientation.x = quaternion.x
+    #     object_state.pose.orientation.y = quaternion.y
+    #     object_state.pose.orientation.z = quaternion.z
+    #     object_state.pose.orientation.w = quaternion.w
+    #     self.set_state.publish(object_state)
+
+    #     self.odom_x = object_state.pose.position.x
+    #     self.odom_y = object_state.pose.position.y
+
+    #     # set a random goal in empty space in environment
+    #     self.change_goal()
+    #     # randomly scatter boxes in the environment
+    #     # self.random_box()
+    #     self.publish_markers([0.0, 0.0])
+
+    #     rospy.wait_for_service("/gazebo/unpause_physics")
+    #     try:
+    #         self.unpause()
+    #     except (rospy.ServiceException) as e:
+    #         print("/gazebo/unpause_physics service call failed")
+
+    #     time.sleep(TIME_DELTA)
+
+    #     rospy.wait_for_service("/gazebo/pause_physics")
+    #     try:
+    #         self.pause()
+    #     except (rospy.ServiceException) as e:
+    #         print("/gazebo/pause_physics service call failed")
+    #     v_state = []
+    #     v_state[:] = self.velodyne_data[:]
+    #     laser_state = [v_state]
+
+    #     distance = np.linalg.norm(
+    #         [self.odom_x - self.goal_x, self.odom_y - self.goal_y]
+    #     )
+
+    #     skew_x = self.goal_x - self.odom_x
+    #     skew_y = self.goal_y - self.odom_y
+
+    #     dot = skew_x * 1 + skew_y * 0
+    #     mag1 = math.sqrt(math.pow(skew_x, 2) + math.pow(skew_y, 2))
+    #     mag2 = math.sqrt(math.pow(1, 2) + math.pow(0, 2))
+    #     beta = math.acos(dot / (mag1 * mag2))
+
+    #     if skew_y < 0:
+    #         if skew_x < 0:
+    #             beta = -beta
+    #         else:
+    #             beta = 0 - beta
+    #     theta = beta - angle
+
+    #     if theta > np.pi:
+    #         theta = np.pi - theta
+    #         theta = -np.pi - theta
+    #     if theta < -np.pi:
+    #         theta = -np.pi - theta
+    #         theta = np.pi - theta
+
+    #     robot_state = [distance, theta, 0.0, 0.0]
+    #     state = np.append(laser_state, robot_state)
+    #     return state
+
     def reset(self):
-
-        # Resets the state of the environment and returns an initial observation.
-        rospy.wait_for_service("/gazebo/reset_world")
-        try:
-            self.reset_proxy()
-
-        except rospy.ServiceException as e:
-            print("/gazebo/reset_simulation service call failed")
-
-        angle = np.random.uniform(-np.pi, np.pi)
-        quaternion = Quaternion.from_euler(0.0, 0.0, angle)
+        # Manually reset the robot's position and orientation ensuring it's not on an obstacle
+        quaternion = Quaternion.from_euler(0.0, 0.0, np.random.uniform(-np.pi, np.pi))
         object_state = self.set_self_state
 
-        x = 0
-        y = 0
         position_ok = False
         while not position_ok:
             x = np.random.uniform(-4.5, 4.5)
             y = np.random.uniform(-4.5, 4.5)
             position_ok = check_pos(x, y)
+
         object_state.pose.position.x = x
         object_state.pose.position.y = y
-        # object_state.pose.position.z = 0.
         object_state.pose.orientation.x = quaternion.x
         object_state.pose.orientation.y = quaternion.y
         object_state.pose.orientation.z = quaternion.z
         object_state.pose.orientation.w = quaternion.w
         self.set_state.publish(object_state)
 
-        self.odom_x = object_state.pose.position.x
-        self.odom_y = object_state.pose.position.y
+        self.odom_x = x
+        self.odom_y = y
 
         # set a random goal in empty space in environment
         self.change_goal()
-        # randomly scatter boxes in the environment
-        # self.random_box()
         self.publish_markers([0.0, 0.0])
 
-        rospy.wait_for_service("/gazebo/unpause_physics")
-        try:
-            self.unpause()
-        except (rospy.ServiceException) as e:
-            print("/gazebo/unpause_physics service call failed")
+        # Return the initial state of the environment
+        return self.get_initial_state()
 
-        time.sleep(TIME_DELTA)
+    def get_initial_state(self):
+        # Initial lidar data, assuming maximum range for all measurements
+        initial_lidar_data = np.ones(self.environment_dim) * 10
 
-        rospy.wait_for_service("/gazebo/pause_physics")
-        try:
-            self.pause()
-        except (rospy.ServiceException) as e:
-            print("/gazebo/pause_physics service call failed")
-        v_state = []
-        v_state[:] = self.velodyne_data[:]
-        laser_state = [v_state]
-
-        distance = np.linalg.norm(
-            [self.odom_x - self.goal_x, self.odom_y - self.goal_y]
-        )
+        # Calculate initial distance and angle to the goal
+        distance_to_goal = np.linalg.norm([self.odom_x - self.goal_x, self.odom_y - self.goal_y])
 
         skew_x = self.goal_x - self.odom_x
         skew_y = self.goal_y - self.odom_y
+        dot = skew_x * 1 + skew_y * 0  # Assuming goal direction vector (1, 0) for simplicity
+        mag1 = np.sqrt(skew_x**2 + skew_y**2)
+        mag2 = 1  # Magnitude of (1, 0) is 1
+        beta = np.arccos(dot / (mag1 * mag2))
 
-        dot = skew_x * 1 + skew_y * 0
-        mag1 = math.sqrt(math.pow(skew_x, 2) + math.pow(skew_y, 2))
-        mag2 = math.sqrt(math.pow(1, 2) + math.pow(0, 2))
-        beta = math.acos(dot / (mag1 * mag2))
-
+        angle = np.random.uniform(-np.pi, np.pi)
         if skew_y < 0:
             if skew_x < 0:
                 beta = -beta
@@ -313,9 +375,10 @@ class GazeboEnv:
             theta = -np.pi - theta
             theta = np.pi - theta
 
-        robot_state = [distance, theta, 0.0, 0.0]
-        state = np.append(laser_state, robot_state)
-        return state
+        # Construct the initial state with laser data and robot state ([distance, theta, 0.0, 0.0])
+        initial_state = np.concatenate((initial_lidar_data, [distance_to_goal, theta, 0.0, 0.0]))
+
+        return initial_state
 
     def change_goal(self):
         # Place a new goal and check if its location is not on one of the obstacles
