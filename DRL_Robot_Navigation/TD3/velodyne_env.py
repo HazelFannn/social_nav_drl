@@ -184,17 +184,37 @@ class GazeboEnv:
         v_state[:] = self.velodyne_data[:]
         laser_state = [v_state]
 
-        # Calculate robot heading from odometry data
-        self.odom_x = self.last_odom.pose.pose.position.x
-        self.odom_y = self.last_odom.pose.pose.position.y
-        quaternion = Quaternion(
-            self.last_odom.pose.pose.orientation.w,
-            self.last_odom.pose.pose.orientation.x,
-            self.last_odom.pose.pose.orientation.y,
-            self.last_odom.pose.pose.orientation.z,
-        )
-        euler = quaternion.to_euler(degrees=False)
-        angle = round(euler[2], 4)
+        # # Calculate robot heading from odometry data
+        # self.odom_x = self.last_odom.pose.pose.position.x
+        # self.odom_y = self.last_odom.pose.pose.position.y
+        # quaternion = Quaternion(
+        #     self.last_odom.pose.pose.orientation.w,
+        #     self.last_odom.pose.pose.orientation.x,
+        #     self.last_odom.pose.pose.orientation.y,
+        #     self.last_odom.pose.pose.orientation.z,
+        # )
+        # euler = quaternion.to_euler(degrees=False)
+        # angle = round(euler[2], 4)
+        # Ensure odometry data is not None before proceeding
+        if self.last_odom is None:
+            print("Odometry data is not available.")
+            # Handle the case where odometry data is not available, e.g., by skipping this step or using default values
+            # For this example, let's use default values for odom_x and odom_y, and skip calculations that require last_odom
+            self.odom_x = 0
+            self.odom_y = 0
+            angle = 0  # Default angle value
+        else:
+            # Calculate robot heading from odometry data
+            self.odom_x = self.last_odom.pose.pose.position.x
+            self.odom_y = self.last_odom.pose.pose.position.y
+            quaternion = Quaternion(
+                self.last_odom.pose.pose.orientation.w,
+                self.last_odom.pose.pose.orientation.x,
+                self.last_odom.pose.pose.orientation.y,
+                self.last_odom.pose.pose.orientation.z,
+            )
+            euler = quaternion.to_euler(degrees=False)
+            angle = round(euler[2], 4)
 
         # Calculate distance to the goal from the robot
         distance = np.linalg.norm(

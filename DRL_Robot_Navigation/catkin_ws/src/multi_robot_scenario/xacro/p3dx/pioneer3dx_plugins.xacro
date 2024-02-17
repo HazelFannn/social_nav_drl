@@ -20,6 +20,8 @@
             <robotNamespace></robotNamespace>
             <publishWheelTF>false</publishWheelTF>
             <publishWheelJointState>true</publishWheelJointState>
+            <publishOdomTF>true</publishOdomTF>
+            <publishTf>true</publishTf>
             <alwaysOn>true</alwaysOn>
             <leftJoint>left_hub_joint</leftJoint>
             <rightJoint>right_hub_joint</rightJoint>
