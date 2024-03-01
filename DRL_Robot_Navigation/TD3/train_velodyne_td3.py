@@ -18,11 +18,14 @@ def evaluate(network, epoch, eval_episodes=10):
     for _ in range(eval_episodes):
         count = 0
         state = env.reset()
+        # print("after reset")
         done = False
         while not done and count < 501:
             action = network.get_action(np.array(state))
             a_in = [(action[0] + 1) / 2, action[1]]
+            # print("before step")
             state, reward, done, _ = env.step(a_in)
+            # print("after step")
             avg_reward += reward
             count += 1
             if reward < -90:
@@ -223,7 +226,7 @@ eval_freq = 5e3  # After how many steps to perform the evaluation
 max_ep = 500  # maximum number of steps per episode
 eval_ep = 10  # number of episodes for evaluation
 max_timesteps = 5e6  # Maximum number of steps to perform
-expl_noise = 1  # Initial exploration noise starting value in range [expl_min ... 1]
+expl_noise = 0.9  # Initial exploration noise starting value in range [expl_min ... 1]
 expl_decay_steps = (
     500000  # Number of steps over which the initial exploration noise will decay over
 )
@@ -309,6 +312,9 @@ while timestep < max_timesteps:
             epoch += 1
 
         state = env.reset()
+        print("after reset")
+        print()
+        print()
         done = False
 
         episode_reward = 0
@@ -330,20 +336,24 @@ while timestep < max_timesteps:
     if random_near_obstacle:
         if (
             np.random.uniform(0, 1) > 0.85
-            and min(state[4:-8]) < 0.6
+            and min(state[4:-8]) < 0.8
             and count_rand_actions < 1
         ):
-            count_rand_actions = np.random.randint(8, 15)
+            count_rand_actions = np.random.randint(10, 18)
             random_action = np.random.uniform(-1, 1, 2)
 
         if count_rand_actions > 0:
+            print("random action added!!!!!!!!!", count_rand_actions)
             count_rand_actions -= 1
             action = random_action
             action[0] = -1
 
     # Update action to fall in range [0,1] for linear velocity and [-1,1] for angular velocity
     a_in = [(action[0] + 1) / 2, action[1]]
+    print("before step ", a_in)
+    # a_in = [0.0, 0.0]
     next_state, reward, done, target = env.step(a_in)
+    # print("after step")
     done_bool = 0 if episode_timesteps + 1 == max_ep else int(done)
     done = 1 if episode_timesteps + 1 == max_ep else int(done)
     episode_reward += reward

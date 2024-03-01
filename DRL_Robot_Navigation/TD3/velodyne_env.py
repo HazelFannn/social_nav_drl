@@ -20,13 +20,14 @@ from visualization_msgs.msg import MarkerArray
 GOAL_REACHED_DIST = 0.3
 COLLISION_DIST = 0.35
 TIME_DELTA = 0.1
+CYCLE_PENALTY = -10
 
 
 # Check if the random goal position is located on an obstacle and do not accept it if it is
 def check_pos(x, y):
     goal_ok = True
 
-    if -3.8 > x > -6.2 and 6.2 > y > 3.8:
+    if -3.8 > x > -5.0 and 5.0 > y > 3.8:
         goal_ok = False
 
     if -1.3 > x > -2.7 and 4.7 > y > -0.2:
@@ -47,7 +48,7 @@ def check_pos(x, y):
     if 4 > x > 2.5 and 0.7 > y > -3.2:
         goal_ok = False
 
-    if 6.2 > x > 3.8 and -3.3 > y > -4.2:
+    if 5.0 > x > 3.8 and -3.3 > y > -4.2:
         goal_ok = False
 
     if 4.2 > x > 1.3 and 3.7 > y > 1.5:
@@ -87,6 +88,26 @@ class GazeboEnv:
         self.set_self_state.pose.orientation.y = 0.0
         self.set_self_state.pose.orientation.z = 0.2
         self.set_self_state.pose.orientation.w = 1.0
+
+        # Add for dynamic obstacle detection
+        self.previous_lidar_data = None
+        self.lidar_scan_time = 0.1
+        self.collision_threshold = 0.35
+        self.dynamic_collision_threshold = 0.75 # processing + actuation delay = 0.5s and safety margin 0.25m
+
+        # Add for cycle detection
+        self.state_history = []
+        self.state_history_limit = 50
+        self.cycle_threshold = 0.25
+        self.cycle_detected = False
+        self.exploration_noise_temporary = 1  # Temporary exploration noise to escape cycles
+        self.min_exploration_noise = 0.1  # minimum exploration noise
+        self.max_exploration_noise = 1
+        self.last_position = None
+
+        # Subscribe to the odometry topic to get velocity
+        self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        self.current_velocity = None
 
         self.gaps = [[-np.pi / 2 - 0.03, -np.pi / 2 + np.pi / self.environment_dim]]
         for m in range(self.environment_dim - 1):
@@ -151,7 +172,53 @@ class GazeboEnv:
     def odom_callback(self, od_data):
         self.last_odom = od_data
 
-    # Perform an action and read a new state
+        # Callback function to handle odometry messages
+        self.current_velocity = od_data.twist.twist
+
+    # # Perform an action and read a new state
+    # def step(self, action):
+    #     action = np.array(action)
+
+    #     # # Modify the action with temporary exploration noise if a cycle is detected
+    #     # if self.cycle_detected:
+    #     #     noise = np.random.randn(*action.shape) * self.exploration_noise_temporary
+    #     #     action += noise
+    #     #     # print("Exploration noise applied.")
+
+    #     # Execute the action in the environment and observe the next state and reward
+    #     next_state, reward, done, info = self._step(action)
+
+    #     # print(f"Checking for cycles with threshold {self.cycle_threshold}")
+
+    #     # # Check for cycles by comparing the next state with the history of states
+    #     # cycle_detected = False
+    #     # for past_state in self.state_history:
+    #     #     if np.linalg.norm(next_state - past_state) < self.cycle_threshold:
+    #     #         # print(f"Cycle detected with state difference {np.linalg.norm(next_state - past_state)}")
+    #     #         cycle_detected = True
+    #     #         reward += CYCLE_PENALTY
+    #     #         # print("Cycle detected. Penalty applied.")
+    #     #         break
+
+    #     # self.cycle_detected = cycle_detected
+        
+    #     # # Update the state history, maintaining the history limit
+    #     # self.state_history.append(next_state.tolist())
+    #     # if len(self.state_history) > self.state_history_limit:
+    #     #     self.state_history.pop(0)
+
+    #     # # Adjust exploration noise based on detections
+    #     # self.adjust_exploration_noise()
+
+    #     return next_state, reward, done, info
+
+    def adjust_exploration_noise(self):
+        if self.cycle_detected:
+            self.exploration_noise_temporary *= 1.1  # Increase noise
+        else:
+            self.exploration_noise_temporary *= 0.9  # Decrease noise
+        self.exploration_noise_temporary = np.clip(self.exploration_noise_temporary, self.min_exploration_noise, self.max_exploration_noise)
+
     def step(self, action):
         target = False
 
@@ -184,17 +251,6 @@ class GazeboEnv:
         v_state[:] = self.velodyne_data[:]
         laser_state = [v_state]
 
-        # # Calculate robot heading from odometry data
-        # self.odom_x = self.last_odom.pose.pose.position.x
-        # self.odom_y = self.last_odom.pose.pose.position.y
-        # quaternion = Quaternion(
-        #     self.last_odom.pose.pose.orientation.w,
-        #     self.last_odom.pose.pose.orientation.x,
-        #     self.last_odom.pose.pose.orientation.y,
-        #     self.last_odom.pose.pose.orientation.z,
-        # )
-        # euler = quaternion.to_euler(degrees=False)
-        # angle = round(euler[2], 4)
         # Ensure odometry data is not None before proceeding
         if self.last_odom is None:
             print("Odometry data is not available.")
@@ -251,95 +307,45 @@ class GazeboEnv:
         reward = self.get_reward(target, collision, action, min_laser)
         return state, reward, done, target
 
-    # def reset(self):
-
-    #     # Resets the state of the environment and returns an initial observation.
-    #     rospy.wait_for_service("/gazebo/reset_world")
-    #     try:
-    #         self.reset_proxy()
-
-    #     except rospy.ServiceException as e:
-    #         print("/gazebo/reset_simulation service call failed")
-
-    #     angle = np.random.uniform(-np.pi, np.pi)
-    #     quaternion = Quaternion.from_euler(0.0, 0.0, angle)
-    #     object_state = self.set_self_state
-
-    #     x = 0
-    #     y = 0
-    #     position_ok = False
-    #     while not position_ok:
-    #         x = np.random.uniform(-4.5, 4.5)
-    #         y = np.random.uniform(-4.5, 4.5)
-    #         position_ok = check_pos(x, y)
-    #     object_state.pose.position.x = x
-    #     object_state.pose.position.y = y
-    #     # object_state.pose.position.z = 0.
-    #     object_state.pose.orientation.x = quaternion.x
-    #     object_state.pose.orientation.y = quaternion.y
-    #     object_state.pose.orientation.z = quaternion.z
-    #     object_state.pose.orientation.w = quaternion.w
-    #     self.set_state.publish(object_state)
-
-    #     self.odom_x = object_state.pose.position.x
-    #     self.odom_y = object_state.pose.position.y
-
-    #     # set a random goal in empty space in environment
-    #     self.change_goal()
-    #     # randomly scatter boxes in the environment
-    #     # self.random_box()
-    #     self.publish_markers([0.0, 0.0])
-
-    #     rospy.wait_for_service("/gazebo/unpause_physics")
-    #     try:
-    #         self.unpause()
-    #     except (rospy.ServiceException) as e:
-    #         print("/gazebo/unpause_physics service call failed")
-
-    #     time.sleep(TIME_DELTA)
-
-    #     rospy.wait_for_service("/gazebo/pause_physics")
-    #     try:
-    #         self.pause()
-    #     except (rospy.ServiceException) as e:
-    #         print("/gazebo/pause_physics service call failed")
-    #     v_state = []
-    #     v_state[:] = self.velodyne_data[:]
-    #     laser_state = [v_state]
-
-    #     distance = np.linalg.norm(
-    #         [self.odom_x - self.goal_x, self.odom_y - self.goal_y]
-    #     )
-
-    #     skew_x = self.goal_x - self.odom_x
-    #     skew_y = self.goal_y - self.odom_y
-
-    #     dot = skew_x * 1 + skew_y * 0
-    #     mag1 = math.sqrt(math.pow(skew_x, 2) + math.pow(skew_y, 2))
-    #     mag2 = math.sqrt(math.pow(1, 2) + math.pow(0, 2))
-    #     beta = math.acos(dot / (mag1 * mag2))
-
-    #     if skew_y < 0:
-    #         if skew_x < 0:
-    #             beta = -beta
-    #         else:
-    #             beta = 0 - beta
-    #     theta = beta - angle
-
-    #     if theta > np.pi:
-    #         theta = np.pi - theta
-    #         theta = -np.pi - theta
-    #     if theta < -np.pi:
-    #         theta = -np.pi - theta
-    #         theta = np.pi - theta
-
-    #     robot_state = [distance, theta, 0.0, 0.0]
-    #     state = np.append(laser_state, robot_state)
-    #     return state
-
     def reset(self):
+         # Reset the environment to a starting state
+        self.state_history.clear()  # Clear the state history
+        self.cycle_detected = False  # Reset cycle detection
+        # start_state = self._reset()  # Implement the reset logic to get the starting state
+
+        # Ensure initial velocities are zero
+        self.publish_zero_velocity()
+        time.sleep(0.2)  # Give some time for the robot to stabilize
+
+        start_state = self._reset()
+
+        # Log the current velocity
+        if self.current_velocity is not None:
+            rospy.loginfo("Current Velocity Linear: %s, Angular: %s", 
+                        self.current_velocity.linear, 
+                        self.current_velocity.angular)
+        else:
+            rospy.loginfo("No velocity data available.")
+
+        # Gradually increase speed
+        for step in range(1, 6):
+            vel_cmd = Twist()
+            vel_cmd.linear.x = step * 0.2
+            vel_cmd.angular.z = 0
+            self.vel_pub.publish(vel_cmd)
+            time.sleep(0.8)
+        return start_state
+
+    def publish_zero_velocity(self):
+        vel_cmd = Twist()  # Zero velocity
+        vel_cmd.linear.x = 0
+        vel_cmd.angular.z = 0
+        self.vel_pub.publish(vel_cmd)
+
+    def _reset(self):
         # Manually reset the robot's position and orientation ensuring it's not on an obstacle
-        quaternion = Quaternion.from_euler(0.0, 0.0, np.random.uniform(-np.pi, np.pi))
+        # quaternion = Quaternion.from_euler(0.0, 0.0, np.random.uniform(-np.pi, np.pi))
+        quaternion = Quaternion.from_euler(0.0, 0.0, 0.0)
         object_state = self.set_self_state
 
         position_ok = False
@@ -414,33 +420,6 @@ class GazeboEnv:
             self.goal_y = self.odom_y + random.uniform(self.upper, self.lower)
             goal_ok = check_pos(self.goal_x, self.goal_y)
 
-    def random_box(self):
-        # Randomly change the location of the boxes in the environment on each reset to randomize the training
-        # environment
-        for i in range(4):
-            name = "cardboard_box_" + str(i)
-
-            x = 0
-            y = 0
-            box_ok = False
-            while not box_ok:
-                x = np.random.uniform(-6, 6)
-                y = np.random.uniform(-6, 6)
-                box_ok = check_pos(x, y)
-                distance_to_robot = np.linalg.norm([x - self.odom_x, y - self.odom_y])
-                distance_to_goal = np.linalg.norm([x - self.goal_x, y - self.goal_y])
-                if distance_to_robot < 1.5 or distance_to_goal < 1.5:
-                    box_ok = False
-            box_state = ModelState()
-            box_state.model_name = name
-            box_state.pose.position.x = x
-            box_state.pose.position.y = y
-            box_state.pose.position.z = 0.2
-            box_state.pose.orientation.x = 0.0
-            box_state.pose.orientation.y = 0.0
-            box_state.pose.orientation.z = 0.2
-            box_state.pose.orientation.w = 1.0
-            self.set_state.publish(box_state)
 
     def publish_markers(self, action):
         # Publish visual data in Rviz
@@ -505,13 +484,49 @@ class GazeboEnv:
         markerArray3.markers.append(marker3)
         self.publisher3.publish(markerArray3)
 
-    @staticmethod
-    def observe_collision(laser_data):
-        # Detect a collision from laser data
-        min_laser = min(laser_data)
-        if min_laser < COLLISION_DIST:
-            return True, True, min_laser
-        return False, False, min_laser
+    # @staticmethod
+    # def observe_collision(laser_data):
+    #     # Detect a collision from laser data
+    #     min_laser = min(laser_data)
+    #     if min_laser < COLLISION_DIST:
+    #         return True, True, min_laser
+    #     return False, False, min_laser
+
+    def observe_collision(self, current_lidar_data):
+        if self.previous_lidar_data is None:
+            self.previous_lidar_data = current_lidar_data
+            return False, False, min(current_lidar_data)
+
+        dynamic_obstacles = []
+        for angle in range(len(current_lidar_data)):
+            distance_change = current_lidar_data[angle] - self.previous_lidar_data[angle]
+            # Detect if there's a significant change in distance that could indicate movement
+            if abs(distance_change) > self.movement_threshold(distance_change, self.lidar_scan_time):
+                dynamic_obstacles.append((angle, current_lidar_data[angle]))
+
+        # Update previous_lidar_data for the next call
+        self.previous_lidar_data = current_lidar_data
+
+        # Process dynamic obstacles to determine if there's a collision risk
+        collision_risk = self.process_dynamic_obstacles(dynamic_obstacles)
+
+        min_distance = min(current_lidar_data)
+        collision = min_distance < self.collision_threshold  # Static collision check
+
+        return collision, collision_risk, min_distance
+
+    def movement_threshold(self, distance_change, time):
+        # Define how you determine significant movement; could be a simple fixed value
+        # or more complex logic based on velocity estimation.
+        return 0.3  # Example threshold in meters
+
+    def process_dynamic_obstacles(self, dynamic_obstacles):
+        # Implement logic to determine if any dynamic obstacle poses a collision risk
+        # This could involve checking their distance, estimated velocity, and direction of movement.
+        for angle, distance in dynamic_obstacles:
+            if distance < self.dynamic_collision_threshold:
+                return True  # Example check
+        return False
 
     @staticmethod
     def get_reward(target, collision, action, min_laser):

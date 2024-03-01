@@ -150,7 +150,7 @@
       </plugin>
     </actor>
 
-    <actor name="actor4">
+    <actor name="actor3">
       <pose>3 0 1.25 0 0 0</pose>
       <skin>
         <filename>walk.dae</filename> <!--run.dae-->
@@ -162,7 +162,7 @@
         <interpolate_x>true</interpolate_x>
       </animation>
 
-      <plugin name="actor4_plugin" filename="libPedestrianSFMPlugin.so">
+      <plugin name="actor3_plugin" filename="libPedestrianSFMPlugin.so">
         <velocity>1.0</velocity>
         <radius>0.4</radius>
         <animation_factor>5.1</animation_factor>
@@ -174,7 +174,7 @@
         <group_coh_weight>2.0</group_coh_weight>
         <group_rep_weight>1.0</group_rep_weight>
         <group>
-            <model>actor5</model>
+            <model>actor4</model>
         </group>
         <ignore_obstacles>
           <model>cafe</model>
@@ -188,7 +188,7 @@
       </plugin>
     </actor>
 
-    <actor name="actor5">
+    <actor name="actor4">
       <pose>3 0.8 1.25 0 0 0</pose>
       <skin>
         <filename>walk.dae</filename> <!--run.dae-->
@@ -200,7 +200,7 @@
         <interpolate_x>true</interpolate_x>
       </animation>
 
-      <plugin name="actor5_plugin" filename="libPedestrianSFMPlugin.so">
+      <plugin name="actor4_plugin" filename="libPedestrianSFMPlugin.so">
         <velocity>0.7</velocity>
         <radius>0.4</radius>
         <animation_factor>5.1</animation_factor>
@@ -212,7 +212,7 @@
         <group_coh_weight>2.0</group_coh_weight>
         <group_rep_weight>1.0</group_rep_weight>
         <group>
-            <model>actor4</model>
+            <model>actor3</model>
         </group>
         <ignore_obstacles> <!--the other actors are automatically added-->
           <model>cafe</model>
