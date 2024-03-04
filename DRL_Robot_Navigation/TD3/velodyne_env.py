@@ -27,7 +27,7 @@ CYCLE_PENALTY = -10
 def check_pos(x, y):
     goal_ok = True
 
-    if -3.8 > x > -5.0 and 5.0 > y > 3.8:
+    if -4.5 > x > -10.0 and 5.0 > y > 3.8:
         goal_ok = False
 
     if -1.3 > x > -2.7 and 4.7 > y > -0.2:
@@ -48,7 +48,7 @@ def check_pos(x, y):
     if 4 > x > 2.5 and 0.7 > y > -3.2:
         goal_ok = False
 
-    if 5.0 > x > 3.8 and -3.3 > y > -4.2:
+    if 10.0 > x > 4.5 and -3.3 > y > -4.2:
         goal_ok = False
 
     if 4.2 > x > 1.3 and 3.7 > y > 1.5:
@@ -104,6 +104,9 @@ class GazeboEnv:
         self.min_exploration_noise = 0.1  # minimum exploration noise
         self.max_exploration_noise = 1
         self.last_position = None
+
+        # Initialize for reward calculation
+        self.time_step = 0
 
         # Subscribe to the odometry topic to get velocity
         self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
@@ -221,6 +224,7 @@ class GazeboEnv:
 
     def step(self, action):
         target = False
+        self.time_step += 1
 
         # Publish the robot action
         vel_cmd = Twist()
@@ -304,13 +308,14 @@ class GazeboEnv:
 
         robot_state = [distance, theta, action[0], action[1]]
         state = np.append(laser_state, robot_state)
-        reward = self.get_reward(target, collision, action, min_laser)
+        reward = self.get_reward(target, collision, action, min_laser, self.time_step)
         return state, reward, done, target
 
     def reset(self):
          # Reset the environment to a starting state
         self.state_history.clear()  # Clear the state history
         self.cycle_detected = False  # Reset cycle detection
+        self.time_step = 0 # Reset time step counter for the new episode
         # start_state = self._reset()  # Implement the reset logic to get the starting state
 
         # Ensure initial velocities are zero
@@ -333,7 +338,7 @@ class GazeboEnv:
             vel_cmd.linear.x = step * 0.2
             vel_cmd.angular.z = 0
             self.vel_pub.publish(vel_cmd)
-            time.sleep(0.8)
+            time.sleep(1)
         return start_state
 
     def publish_zero_velocity(self):
@@ -350,8 +355,8 @@ class GazeboEnv:
 
         position_ok = False
         while not position_ok:
-            x = np.random.uniform(-4.5, 4.5)
-            y = np.random.uniform(-4.5, 4.5)
+            x = np.random.uniform(-4.3, 4.3)
+            y = np.random.uniform(-9.0, 5.0)
             position_ok = check_pos(x, y)
 
         object_state.pose.position.x = x
@@ -529,11 +534,17 @@ class GazeboEnv:
         return False
 
     @staticmethod
-    def get_reward(target, collision, action, min_laser):
+    def get_reward(target, collision, action, min_laser, time_step):
+        reward = 0.0
+
         if target:
-            return 100.0
-        elif collision:
-            return -100.0
-        else:
-            r3 = lambda x: 1 - x if x < 1 else 0.0
-            return action[0] / 2 - abs(action[1]) / 2 - r3(min_laser) / 2
+            reward += 100.0
+        if collision:
+            reward += -100.0
+
+        reward -= 1.0 * time_step # penalty for each time step to encourage reaching the goal quickly
+
+        r3 = lambda x: 1 - x if x < 1 else 0.0
+        reward += action[0] / 2 - abs(action[1]) / 2 - r3(min_laser) / 2
+
+        return reward

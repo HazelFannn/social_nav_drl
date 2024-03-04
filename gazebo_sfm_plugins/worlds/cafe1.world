@@ -79,6 +79,12 @@
       <uri>model://bar_wall</uri>
     </include>
 
+    <include>
+      <name>table_leg</name>
+      <pose>-4.635050 -2.447370 0.511656 0 0 0.001488</pose>
+      <uri>model://table_leg</uri>
+    </include>
+
     <actor name="actor1">
       <pose>-1 2 1.25 0 0 0</pose>
       <skin>

@@ -350,7 +350,7 @@ while timestep < max_timesteps:
 
     # Update action to fall in range [0,1] for linear velocity and [-1,1] for angular velocity
     a_in = [(action[0] + 1) / 2, action[1]]
-    print("before step ", a_in)
+    # print("before step ", a_in)
     # a_in = [0.0, 0.0]
     next_state, reward, done, target = env.step(a_in)
     # print("after step")
