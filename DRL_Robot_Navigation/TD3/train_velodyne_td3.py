@@ -25,7 +25,6 @@ def evaluate(network, epoch, eval_episodes=10):
             a_in = [(action[0] + 1) / 2, action[1]]
             # print("before step")
             state, reward, done, _ = env.step(a_in)
-            # print("after step")
             avg_reward += reward
             count += 1
             if reward < -90:
@@ -226,7 +225,7 @@ eval_freq = 5e3  # After how many steps to perform the evaluation
 max_ep = 500  # maximum number of steps per episode
 eval_ep = 10  # number of episodes for evaluation
 max_timesteps = 5e6  # Maximum number of steps to perform
-expl_noise = 0.9  # Initial exploration noise starting value in range [expl_min ... 1]
+expl_noise = 1  # Initial exploration noise starting value in range [expl_min ... 1]
 expl_decay_steps = (
     500000  # Number of steps over which the initial exploration noise will decay over
 )
@@ -312,6 +311,7 @@ while timestep < max_timesteps:
             epoch += 1
 
         state = env.reset()
+        count_rand_actions = 0
         print("after reset")
         print()
         print()
@@ -343,7 +343,7 @@ while timestep < max_timesteps:
             random_action = np.random.uniform(-1, 1, 2)
 
         if count_rand_actions > 0:
-            print("random action added!!!!!!!!!", count_rand_actions)
+            # print("random action added!!!!!!!!!", count_rand_actions)
             count_rand_actions -= 1
             action = random_action
             action[0] = -1
@@ -353,6 +353,7 @@ while timestep < max_timesteps:
     # print("before step ", a_in)
     # a_in = [0.0, 0.0]
     next_state, reward, done, target = env.step(a_in)
+    # print("!!!!!!!!The reward is:", reward)
     # print("after step")
     done_bool = 0 if episode_timesteps + 1 == max_ep else int(done)
     done = 1 if episode_timesteps + 1 == max_ep else int(done)

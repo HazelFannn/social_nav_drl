@@ -33,6 +33,18 @@ def check_pos(x, y):
     if -1.3 > x > -2.7 and 4.7 > y > -0.2:
         goal_ok = False
 
+    # Cafe bar
+    if 0 > x > -2 and 7.5 > y > 2.5:
+        goal_ok = False
+
+    # Right-side wall - middle
+    if 6 > x > 3.9 and 6.5 > y > -7.0:
+        goal_ok = False
+
+    # Fridge
+    if -3.5 > x > -5.5 and 1.2 > y > -0.5:
+        goal_ok = False
+
     if -0.3 > x > -4.2 and 2.7 > y > 1.3:
         goal_ok = False
 
@@ -215,12 +227,12 @@ class GazeboEnv:
 
     #     return next_state, reward, done, info
 
-    def adjust_exploration_noise(self):
-        if self.cycle_detected:
-            self.exploration_noise_temporary *= 1.1  # Increase noise
-        else:
-            self.exploration_noise_temporary *= 0.9  # Decrease noise
-        self.exploration_noise_temporary = np.clip(self.exploration_noise_temporary, self.min_exploration_noise, self.max_exploration_noise)
+    # def adjust_exploration_noise(self):
+    #     if self.cycle_detected:
+    #         self.exploration_noise_temporary *= 1.1  # Increase noise
+    #     else:
+    #         self.exploration_noise_temporary *= 0.9  # Decrease noise
+    #     self.exploration_noise_temporary = np.clip(self.exploration_noise_temporary, self.min_exploration_noise, self.max_exploration_noise)
 
     def step(self, action):
         target = False
@@ -313,16 +325,16 @@ class GazeboEnv:
 
     def reset(self):
          # Reset the environment to a starting state
-        self.state_history.clear()  # Clear the state history
-        self.cycle_detected = False  # Reset cycle detection
+        # self.state_history.clear()  # Clear the state history
+        # self.cycle_detected = False  # Reset cycle detection
         self.time_step = 0 # Reset time step counter for the new episode
-        # start_state = self._reset()  # Implement the reset logic to get the starting state
+        start_state = self._reset()  # Implement the reset logic to get the starting state
 
         # Ensure initial velocities are zero
         self.publish_zero_velocity()
-        time.sleep(0.2)  # Give some time for the robot to stabilize
+        time.sleep(0.6)  # Give some time for the robot to stabilize
 
-        start_state = self._reset()
+        # start_state = self._reset()
 
         # Log the current velocity
         if self.current_velocity is not None:
@@ -337,8 +349,8 @@ class GazeboEnv:
             vel_cmd = Twist()
             vel_cmd.linear.x = step * 0.2
             vel_cmd.angular.z = 0
+            time.sleep(0.8)
             self.vel_pub.publish(vel_cmd)
-            time.sleep(1)
         return start_state
 
     def publish_zero_velocity(self):
@@ -349,8 +361,9 @@ class GazeboEnv:
 
     def _reset(self):
         # Manually reset the robot's position and orientation ensuring it's not on an obstacle
-        # quaternion = Quaternion.from_euler(0.0, 0.0, np.random.uniform(-np.pi, np.pi))
-        quaternion = Quaternion.from_euler(0.0, 0.0, 0.0)
+        quaternion = Quaternion.from_euler(0.0, 0.0, np.random.uniform(-np.pi, np.pi))
+        time.sleep(0.5)
+        #quaternion = Quaternion.from_euler(0.0, 0.0, 0.0)
         object_state = self.set_self_state
 
         position_ok = False
@@ -538,11 +551,11 @@ class GazeboEnv:
         reward = 0.0
 
         if target:
-            reward += 100.0
+            reward += 150.0
         if collision:
             reward += -100.0
 
-        reward -= 1.0 * time_step # penalty for each time step to encourage reaching the goal quickly
+        reward -= 0.02 * time_step # penalty for each time step to encourage reaching the goal quickly
 
         r3 = lambda x: 1 - x if x < 1 else 0.0
         reward += action[0] / 2 - abs(action[1]) / 2 - r3(min_laser) / 2
