@@ -40,6 +40,7 @@ void PedestrianSFMPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   this->sdf = _sdf;
   this->actor = boost::dynamic_pointer_cast<physics::Actor>(_model);
   this->world = this->actor->GetWorld();
+  this->initialPose = this->actor->WorldPose(); //Hazel modified!!!!!!!!!!!!
 
   this->sfmActor.id = this->actor->GetId();
 
@@ -148,6 +149,8 @@ void PedestrianSFMPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 /////////////////////////////////////////////////
 void PedestrianSFMPlugin::Reset()
 {
+  this->actor->SetWorldPose(this->initialPose); //Hazel modified!!!!!!!!!!!
+  
   // this->velocity = 0.8;
   this->lastUpdate = 0;
 
@@ -353,7 +356,7 @@ void PedestrianSFMPlugin::OnUpdate(const common::UpdateInfo &_info)
   // Make sure the actor stays within bounds
   // actorPose.Pos().X(std::max(-3.0, std::min(3.5, actorPose.Pos().X())));
   // actorPose.Pos().Y(std::max(-10.0, std::min(2.0, actorPose.Pos().Y())));
-  actorPose.Pos().Z(1.2138);
+  actorPose.Pos().Z(1.03); //Hazel modified!!!!!!!!!!!!!!!!!!
 
   // Distance traveled is used to coordinate motion with the walking
   // animation

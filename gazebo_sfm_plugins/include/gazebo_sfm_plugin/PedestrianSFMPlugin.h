@@ -103,6 +103,10 @@ private:
 private:
   ignition::math::Vector3d velocity;
 
+    /// \brief Initial pose of the actor Hazel edition!!
+private:
+  ignition::math::Pose3d initialPose;
+
   /// \brief List of connections
 private:
   std::vector<event::ConnectionPtr> connections;
