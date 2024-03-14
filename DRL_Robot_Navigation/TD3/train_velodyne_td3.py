@@ -241,10 +241,10 @@ load_model = False  # Weather to load a stored model
 random_near_obstacle = True  # To take random actions near obstacles or not
 
 # Create the network storage folders
-if not os.path.exists("./results"):
-    os.makedirs("./results")
-if save_model and not os.path.exists("./pytorch_models"):
-    os.makedirs("./pytorch_models")
+if not os.path.exists("./results/training_results"):
+    os.makedirs("./results/training_results")
+if save_model and not os.path.exists("./pytorch_models/training_models"):
+    os.makedirs("./pytorch_models/training_models")
 
 # Create the training environment
 environment_dim = 20
@@ -263,7 +263,7 @@ network = TD3(state_dim, action_dim, max_action)
 replay_buffer = ReplayBuffer(buffer_size, seed)
 if load_model:
     try:
-        network.load(file_name, "./pytorch_models")
+        network.load(file_name, "./pytorch_models/training_models")
     except:
         print(
             "Could not load the stored model parameters, initializing training with random parameters"
@@ -304,7 +304,7 @@ while timestep < max_timesteps:
             evaluations.append(
                 evaluate(network=network, epoch=epoch, eval_episodes=eval_ep)
             )
-            network.save(file_name, directory="./pytorch_models")
+            network.save(file_name, directory="./pytorch_models/training_models")
             np.save("./results/%s" % (file_name), evaluations)
             epoch += 1
 
