@@ -16,6 +16,7 @@ from squaternion import Quaternion
 from std_srvs.srv import Empty
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
+from tf.transformations import euler_from_quaternion
 
 GOAL_REACHED_DIST = 0.3
 COLLISION_DIST = 0.35
@@ -26,38 +27,88 @@ TIME_DELTA = 0.1
 def check_pos(x, y):
     goal_ok = True
 
-    if -3.8 > x > -6.2 and 6.2 > y > 3.8:
+    # # For scenario 1
+    # if -2.9 > x > -4.3 and 6.1 > y > 4.8:
+    #     goal_ok = False
+
+    # if -1.9 > x > -3.3 and 4.1 > y > 2.8:
+    #     goal_ok = False
+
+    # if -2.9 > x > -4.3 and 2.1 > y > 0.8:
+    #     goal_ok = False
+
+    # if 1.8 > x > -0.3 and 3.7 > y > 1.7:
+    #     goal_ok = False
+
+    # if 3.5 > x > 1.3 and -2.1 > y > -2.9:
+    #     goal_ok = False
+
+    # if 3.6 > x > 2.8 and 0.1 > y > -2.7:
+    #     goal_ok = False
+
+    # if -1.1 > x > -3.8 and -1.2 > y > -3.7:
+    #     goal_ok = False
+
+    # if 0.9 > x > -0.9 and -4.8 > y > -6.0:
+    #     goal_ok = False
+
+    # if 4.2 > x > 5.5 and -3.5 > y > -4.3:
+    #     goal_ok = False
+
+    # if 6.5 > x > -6.5 and 10.0 > y > 7.0:
+    #     goal_ok = False
+
+    # if x > 4.5 or x < -4.5 or y > 6.5 or y < -6.5:
+    #     goal_ok = False
+
+    # For scenario 2
+    if 1.1 > x > -2.5 and -3.0 > y > -4.0:
         goal_ok = False
 
-    if -1.3 > x > -2.7 and 4.7 > y > -0.2:
+    if 1.1 > x > -2.5 and 2.0 > y > 1.0:
         goal_ok = False
 
-    if -0.3 > x > -4.2 and 2.7 > y > 1.3:
+    if 2.5 > x > -1.1 and -0.5 > y > -1.5:
         goal_ok = False
 
-    if -0.8 > x > -4.2 and -2.3 > y > -4.2:
+    if 2.5 > x > -1.1 and 4.5 > y > 3.5:
         goal_ok = False
 
-    if -1.3 > x > -3.7 and -0.8 > y > -2.7:
+    if x > 2.5 or x < -2.5 or y > 6.5 or y < -6.5:
         goal_ok = False
 
-    if 4.2 > x > 0.8 and -1.8 > y > -3.2:
-        goal_ok = False
+    # if -3.8 > x > -6.2 and 6.2 > y > 3.8:
+    #     goal_ok = False
 
-    if 4 > x > 2.5 and 0.7 > y > -3.2:
-        goal_ok = False
+    # if -1.3 > x > -2.7 and 4.7 > y > -0.2:
+    #     goal_ok = False
 
-    if 6.2 > x > 3.8 and -3.3 > y > -4.2:
-        goal_ok = False
+    # if -0.3 > x > -4.2 and 2.7 > y > 1.3:
+    #     goal_ok = False
 
-    if 4.2 > x > 1.3 and 3.7 > y > 1.5:
-        goal_ok = False
+    # if -0.8 > x > -4.2 and -2.3 > y > -4.2:
+    #     goal_ok = False
 
-    if -3.0 > x > -7.2 and 0.5 > y > -1.5:
-        goal_ok = False
+    # if -1.3 > x > -3.7 and -0.8 > y > -2.7:
+    #     goal_ok = False
 
-    if x > 4.5 or x < -4.5 or y > 4.5 or y < -4.5:
-        goal_ok = False
+    # if 4.2 > x > 0.8 and -1.8 > y > -3.2:
+    #     goal_ok = False
+
+    # if 4 > x > 2.5 and 0.7 > y > -3.2:
+    #     goal_ok = False
+
+    # if 6.2 > x > 3.8 and -3.3 > y > -4.2:
+    #     goal_ok = False
+
+    # if 4.2 > x > 1.3 and 3.7 > y > 1.5:
+    #     goal_ok = False
+
+    # if -3.0 > x > -7.2 and 0.5 > y > -1.5:
+    #     goal_ok = False
+
+    # if x > 4.5 or x < -4.5 or y > 4.5 or y < -4.5:
+    #     goal_ok = False
 
     return goal_ok
 
@@ -126,15 +177,53 @@ class GazeboEnv:
         self.velodyne = rospy.Subscriber(
             "/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1
         )
+        # add for dynamic obstacle detection
+        self.previous_velodyne_data = None
+        self.previous_odom = None
+        
         self.odom = rospy.Subscriber(
             "/r1/odom", Odometry, self.odom_callback, queue_size=1
         )
 
+    # # define the function to convert PointCloud2 data into a Python list of points
+    # def convert_pc2_to_xyz(self, point_cloud):
+    #     points_list = []
+    #     for point in pc2.read_points(point_cloud, skip_nans=True, field_names=("x", "y", "z")):
+    #         points_list.append((point[0], point[1], point[2]))
+            
+    #     return points_list
+
+    # # implement relayive movement calculation to detect dynamic obstacles
+    # def detect_dynamics(self, current_pts, previous_pts, movement_threshold=0.2, detection_distance=1.0):
+    #     if len(previous_pts) == 0:
+    #         return False
+        
+    #     previous_pts_array = np.array(previous_pts)
+    #     dynamic_obstacle_detected = False
+
+    #     for current_pt in current_pts:
+    #         distances_to_previous_pts = np.linalg.norm(previous_pts_array - np.array(current_pt), axis=1)
+            
+    #         # Check if the point moved beyond the movement threshold (indicating dynamic)
+    #         # and is within the detection distance
+    #         if np.min(distances_to_previous_pts) > movement_threshold:
+    #             distance_to_robot = np.linalg.norm(np.array([self.odom_x, self.odom_y]) - np.array(current_pt[:2]))
+    #             if distance_to_robot <= detection_distance:
+    #                 dynamic_obstacle_detected = True
+    #                 break  # Stop checking if at least one dynamic obstacle is detected within range
+
+    #     return dynamic_obstacle_detected
+
     # Read velodyne pointcloud and turn it into distance data, then select the minimum value for each angle
     # range as state representation
     def velodyne_callback(self, v):
+        # for dynamic detection
+        if self.previous_velodyne_data is None:
+            self.previous_velodyne_data = np.ones(self.environment_dim) * 10
+
         data = list(pc2.read_points(v, skip_nans=False, field_names=("x", "y", "z")))
         self.velodyne_data = np.ones(self.environment_dim) * 10
+
         for i in range(len(data)):
             if data[i][2] > -0.2:
                 dot = data[i][0] * 1 + data[i][1] * 0
@@ -148,12 +237,24 @@ class GazeboEnv:
                         self.velodyne_data[j] = min(self.velodyne_data[j], dist)
                         break
 
+        self.previous_velodyne_data = np.copy(self.velodyne_data)
+
     def odom_callback(self, od_data):
+        if self.previous_odom is None:
+            self.previous_odom = od_data
+        else:
+            # Update last_odom and previous_odom for subsequent messages
+            self.previous_odom = self.last_odom
+
         self.last_odom = od_data
 
     # Perform an action and read a new state
     def step(self, action):
         target = False
+
+        _, _, min_laser = self.observe_collision(self.velodyne_data)
+        if min_laser < 1:
+            action[0] *= 0.5
 
         # Publish the robot action
         vel_cmd = Twist()
@@ -177,6 +278,8 @@ class GazeboEnv:
             self.pause()
         except (rospy.ServiceException) as e:
             print("/gazebo/pause_physics service call failed")
+
+        # self.detect_dynamics()
 
         # read velodyne laser state
         done, collision, min_laser = self.observe_collision(self.velodyne_data)
@@ -241,6 +344,8 @@ class GazeboEnv:
         # except rospy.ServiceException as e:
         #     print("/gazebo/reset_simulation service call failed")
 
+        # self.raw_velodyne_data = None
+
         angle = np.random.uniform(-np.pi, np.pi)
         quaternion = Quaternion.from_euler(0.0, 0.0, angle)
         object_state = self.set_self_state
@@ -250,7 +355,7 @@ class GazeboEnv:
         position_ok = False
         while not position_ok:
             x = np.random.uniform(-4.5, 4.5)
-            y = np.random.uniform(-4.5, 4.5)
+            y = np.random.uniform(-6.5, 6.5)
             position_ok = check_pos(x, y)
         object_state.pose.position.x = x
         object_state.pose.position.y = y
@@ -267,7 +372,7 @@ class GazeboEnv:
         # set a random goal in empty space in environment
         self.change_goal()
         # randomly scatter boxes in the environment
-        self.random_box()
+        # self.random_box()
         self.publish_markers([0.0, 0.0])
 
         rospy.wait_for_service("/gazebo/unpause_physics")
@@ -334,14 +439,14 @@ class GazeboEnv:
     def random_box(self):
         # Randomly change the location of the boxes in the environment on each reset to randomize the training
         # environment
-        for i in range(4):
+        for i in range(2):
             name = "cardboard_box_" + str(i)
 
             x = 0
             y = 0
             box_ok = False
             while not box_ok:
-                x = np.random.uniform(-6, 6)
+                x = np.random.uniform(-4, 4)
                 y = np.random.uniform(-6, 6)
                 box_ok = check_pos(x, y)
                 distance_to_robot = np.linalg.norm([x - self.odom_x, y - self.odom_y])
@@ -422,10 +527,94 @@ class GazeboEnv:
         markerArray3.markers.append(marker3)
         self.publisher3.publish(markerArray3)
 
+    
+    # def observe_dynamics(self, laser_data):
+    #     # Detect a collision from laser data
+    #     min_laser = min(laser_data)
+
+    #     # detect potential dynamic obstacles
+    #     if self.previous_min_laser is not None:
+    #         distance_change = abs(min_laser - self.previous_min_laser)
+
+    #         if distance_change > 0.3 and min_laser < 1.0:
+    #             print("Dynamic obstacle detected within 1 meter!")
+
+    #     self.previous_min_laser = min_laser
+        
+    def detect_dynamics(self):
+        if self.previous_velodyne_data is not None and self.last_odom is not None and self.previous_odom is not None:
+
+            # Calculate the robot's movement since the last frame
+            delta_x = self.last_odom.pose.pose.position.x - self.previous_odom.pose.pose.position.x
+            delta_y = self.last_odom.pose.pose.position.y - self.previous_odom.pose.pose.position.y
+            delta_yaw = self.calculate_yaw_difference(self.last_odom, self.previous_odom)
+            
+            # Adjust the point cloud data for the robot's movement
+            adjusted_velodyne_data = self.adjust_for_robot_movement(self.velodyne_data, delta_x, delta_y, delta_yaw)
+            
+            # Threshold for movement to consider an obstacle as dynamic
+            movement_threshold = 0.1  # meters; adjust based on your application needs
+            
+            # Calculate the difference between the adjusted current and previous frames
+            movement = np.abs(adjusted_velodyne_data - self.previous_velodyne_data)
+
+            # print(f"Delta X: {delta_x}, Delta Y: {delta_y}, Delta Yaw: {delta_yaw}")  # Debugging print
+            # print(f"Adjusted velodyne data: {adjusted_velodyne_data}")  # Debugging print
+            # print(f"Previous velodyne data: {self.previous_velodyne_data}")  # Debugging print
+            # print(f"Movement: {movement}")  # Debugging print
+            
+            # Identify dynamic obstacles
+            dynamic_obstacles = movement > movement_threshold
+            if np.any(dynamic_obstacles):
+                print("dynamic obstacle detected!!!!")
+            # else:
+            #     print("No dynamic obstacle detected.")  # For debugging, to confirm function execution
+            
+            # Update the previous data for the next comparison
+            self.previous_velodyne_data = np.copy(self.velodyne_data)
+            self.previous_odom = np.copy(self.last_odom)
+
+    def calculate_yaw_difference(self, current_odom, previous_odom):
+        # Extract the quaternion tuples
+        current_orientation = (
+            current_odom.pose.pose.orientation.x,
+            current_odom.pose.pose.orientation.y,
+            current_odom.pose.pose.orientation.z,
+            current_odom.pose.pose.orientation.w,
+        )
+        previous_orientation = (
+            previous_odom.pose.pose.orientation.x,
+            previous_odom.pose.pose.orientation.y,
+            previous_odom.pose.pose.orientation.z,
+            previous_odom.pose.pose.orientation.w,
+        )
+
+        # Convert quaternions to Euler angles
+        _, _, current_yaw = euler_from_quaternion(current_orientation)
+        _, _, previous_yaw = euler_from_quaternion(previous_orientation)
+
+        # Calculate the difference in yaw
+        yaw_difference = current_yaw - previous_yaw
+
+        # Normalize the difference to be within -pi to pi
+        yaw_difference = (yaw_difference + np.pi) % (2 * np.pi) - np.pi
+
+        return yaw_difference
+    
+    def adjust_for_robot_movement(self, velodyne_data, delta_x, delta_y, delta_yaw):
+        # assume a very basic adjustment where rotation affects the index of the minimum distance
+        # and translation affects the magnitude of distances slightly
+        adjusted_data = np.roll(velodyne_data, int(delta_yaw * len(velodyne_data) / (2 * np.pi)))
+        translation_effect = np.sqrt(delta_x ** 2 + delta_y ** 2)  # Simplified effect of translation
+        adjusted_data = np.clip(adjusted_data - translation_effect, 0, None)  # Assuming closer objects due to forward movement
+
+        return adjusted_data
+    
     @staticmethod
     def observe_collision(laser_data):
         # Detect a collision from laser data
         min_laser = min(laser_data)
+        
         if min_laser < COLLISION_DIST:
             return True, True, min_laser
         return False, False, min_laser

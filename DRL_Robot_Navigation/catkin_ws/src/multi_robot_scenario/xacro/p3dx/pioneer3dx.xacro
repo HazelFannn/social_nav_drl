@@ -11,12 +11,13 @@
   <!-- Laser -->
   <xacro:include filename="$(find multi_robot_scenario)/xacro/laser/hokuyo.xacro"/>
   <xacro:laser name="front_laser" parent="chassis" xyz="0.125 0 0.25" rpy="0 0 0" meshes="package://gazebo_plugins/test/multi_robot_scenario/meshes/laser"/>
+  
 
-
-  <!-- GPU Laser
+  <!-- GPU Laser 
   <xacro:include filename="$(find multi_robot_scenario)/xacro/laser/hokuyo_gpu.xacro"/>
   <xacro:laser_gpu name="front_laser" parent="chassis" xyz="0.16 0 0.1" rpy="0 0 0" meshes="package://gazebo_plugins/test/multi_robot_scenario/meshes/laser" />
-    -->
+  -->
+  
   <xacro:include filename="$(find multi_robot_scenario)/xacro/camera/camera.xacro"/>
   <xacro:cam name="front_camera" parent="chassis" xyz="0.025 0 0.32" rpy="0 0 0" />
 
