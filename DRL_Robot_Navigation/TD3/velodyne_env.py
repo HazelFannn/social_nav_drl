@@ -4,6 +4,7 @@ import random
 import subprocess
 import time
 from os import path
+import copy
 
 import numpy as np
 import rospy
@@ -27,56 +28,48 @@ TIME_DELTA = 0.1
 def check_pos(x, y):
     goal_ok = True
 
-    # # For scenario 1
-    # if -2.9 > x > -4.3 and 6.1 > y > 4.8:
-    #     goal_ok = False
-
-    # if -1.9 > x > -3.3 and 4.1 > y > 2.8:
-    #     goal_ok = False
-
-    # if -2.9 > x > -4.3 and 2.1 > y > 0.8:
-    #     goal_ok = False
-
-    # if 1.8 > x > -0.3 and 3.7 > y > 1.7:
-    #     goal_ok = False
-
-    # if 3.5 > x > 1.3 and -2.1 > y > -2.9:
-    #     goal_ok = False
-
-    # if 3.6 > x > 2.8 and 0.1 > y > -2.7:
-    #     goal_ok = False
-
-    # if -1.1 > x > -3.8 and -1.2 > y > -3.7:
-    #     goal_ok = False
-
-    # if 0.9 > x > -0.9 and -4.8 > y > -6.0:
-    #     goal_ok = False
-
-    # if 4.2 > x > 5.5 and -3.5 > y > -4.3:
-    #     goal_ok = False
-
-    # if 6.5 > x > -6.5 and 10.0 > y > 7.0:
-    #     goal_ok = False
-
-    # if x > 4.5 or x < -4.5 or y > 6.5 or y < -6.5:
-    #     goal_ok = False
-
-    # For scenario 2
-    if 1.1 > x > -2.5 and -3.0 > y > -4.0:
+    # For scenario 1
+    if -2.9 > x > -4.3 and 6.1 > y > 4.8: # cafe table
         goal_ok = False
 
-    if 1.1 > x > -2.5 and 2.0 > y > 1.0:
+    if -1.9 > x > -3.3 and 4.1 > y > 2.8: # cafe table
         goal_ok = False
 
-    if 2.5 > x > -1.1 and -0.5 > y > -1.5:
+    if -2.9 > x > -4.3 and 2.1 > y > 0.8: # cafe table
         goal_ok = False
 
-    if 2.5 > x > -1.1 and 4.5 > y > 3.5:
+    if 4.6 > x > 0.4 and 3.6 > y > 1.4: # brick box
         goal_ok = False
 
-    if x > 2.5 or x < -2.5 or y > 6.5 or y < -6.5:
+    if 1.2 > x > -1.2 and -1.5 > y > -3.5: # table
         goal_ok = False
 
+    if 1.2 > x > -1.2 and -4.5 > y > -6.5: # table
+        goal_ok = False
+
+    if 4.5 > x > 4.0 and -3.0 > y > -5.0: # bookshelf
+        goal_ok = False
+
+    if x > 4.5 or x < -4.5 or y > 6.5 or y < -6.5:
+        goal_ok = False
+
+    # # For scenario 2
+    # if 1.1 > x > -2.5 and -3.0 > y > -4.0:
+    #     goal_ok = False
+
+    # if 1.1 > x > -2.5 and 2.0 > y > 1.0:
+    #     goal_ok = False
+
+    # if 2.5 > x > -1.1 and -0.5 > y > -1.5:
+    #     goal_ok = False
+
+    # if 2.5 > x > -1.1 and 4.5 > y > 3.5:
+    #     goal_ok = False
+
+    # if x > 2.5 or x < -2.5 or y > 6.5 or y < -6.5:
+    #     goal_ok = False
+
+    # For TD3
     # if -3.8 > x > -6.2 and 6.2 > y > 3.8:
     #     goal_ok = False
 
@@ -178,7 +171,7 @@ class GazeboEnv:
             "/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1
         )
         # add for dynamic obstacle detection
-        self.previous_velodyne_data = None
+        self.previous_velodyne_data = np.ones(self.environment_dim) * 10
         self.previous_odom = None
         
         self.odom = rospy.Subscriber(
@@ -217,9 +210,9 @@ class GazeboEnv:
     # Read velodyne pointcloud and turn it into distance data, then select the minimum value for each angle
     # range as state representation
     def velodyne_callback(self, v):
-        # for dynamic detection
-        if self.previous_velodyne_data is None:
-            self.previous_velodyne_data = np.ones(self.environment_dim) * 10
+        # # for dynamic detection
+        # if self.previous_velodyne_data is None:
+        #     self.previous_velodyne_data = np.ones(self.environment_dim) * 10
 
         data = list(pc2.read_points(v, skip_nans=False, field_names=("x", "y", "z")))
         self.velodyne_data = np.ones(self.environment_dim) * 10
@@ -237,7 +230,7 @@ class GazeboEnv:
                         self.velodyne_data[j] = min(self.velodyne_data[j], dist)
                         break
 
-        self.previous_velodyne_data = np.copy(self.velodyne_data)
+        # self.previous_velodyne_data = np.copy(self.velodyne_data)
 
     def odom_callback(self, od_data):
         if self.previous_odom is None:
@@ -542,7 +535,10 @@ class GazeboEnv:
     #     self.previous_min_laser = min_laser
         
     def detect_dynamics(self):
-        if self.previous_velodyne_data is not None and self.last_odom is not None and self.previous_odom is not None:
+        # print("Entered detect_dynamics function.")
+        if self.last_odom is not None and self.previous_odom is not None:
+            # print("Entered detect_dynamics function.")
+            # print(f"Last odom: {self.last_odom}, Previous odom: {self.previous_odom}")  # Debugging print
 
             # Calculate the robot's movement since the last frame
             delta_x = self.last_odom.pose.pose.position.x - self.previous_odom.pose.pose.position.x
@@ -553,26 +549,26 @@ class GazeboEnv:
             adjusted_velodyne_data = self.adjust_for_robot_movement(self.velodyne_data, delta_x, delta_y, delta_yaw)
             
             # Threshold for movement to consider an obstacle as dynamic
-            movement_threshold = 0.1  # meters; adjust based on your application needs
+            movement_threshold = 0.2  # meters; adjust based on your application needs
             
             # Calculate the difference between the adjusted current and previous frames
             movement = np.abs(adjusted_velodyne_data - self.previous_velodyne_data)
 
-            # print(f"Delta X: {delta_x}, Delta Y: {delta_y}, Delta Yaw: {delta_yaw}")  # Debugging print
-            # print(f"Adjusted velodyne data: {adjusted_velodyne_data}")  # Debugging print
-            # print(f"Previous velodyne data: {self.previous_velodyne_data}")  # Debugging print
-            # print(f"Movement: {movement}")  # Debugging print
+            print(f"Delta X: {delta_x}, Delta Y: {delta_y}, Delta Yaw: {delta_yaw}")  # Debugging print
+            print(f"Adjusted velodyne data: {adjusted_velodyne_data}")  # Debugging print
+            print(f"Previous velodyne data: {self.previous_velodyne_data}")  # Debugging print
+            print(f"Movement: {movement}")  # Debugging print
             
             # Identify dynamic obstacles
             dynamic_obstacles = movement > movement_threshold
             if np.any(dynamic_obstacles):
                 print("dynamic obstacle detected!!!!")
-            # else:
-            #     print("No dynamic obstacle detected.")  # For debugging, to confirm function execution
+            else:
+                print("No dynamic obstacle detected.")  # For debugging, to confirm function execution
             
             # Update the previous data for the next comparison
             self.previous_velodyne_data = np.copy(self.velodyne_data)
-            self.previous_odom = np.copy(self.last_odom)
+            self.previous_odom = copy.deepcopy(self.last_odom)
 
     def calculate_yaw_difference(self, current_odom, previous_odom):
         # Extract the quaternion tuples
