@@ -345,7 +345,7 @@
       <pose>4.78412 -3.73836 0 0 -0 0</pose>
     </model>
     <model name='table'>
-      <static>0</static>
+      <static>1</static>
       <link name='link'>
         <collision name='surface_table'>
           <pose>0 0 1 0 -0 0</pose>
@@ -553,7 +553,7 @@
       <pose>-4.34248 -0.532954 0 0 -0 0</pose>
     </model>
     <model name='table_0'>
-      <static>0</static>
+      <static>1</static>
       <link name='link'>
         <collision name='surface_table'>
           <pose>0 0 1 0 -0 0</pose>
@@ -1179,7 +1179,7 @@
         <trajectory>
           <cyclic>true</cyclic>
           <waypoint>2 5 1.03</waypoint>
-          <waypoint>-1 -6 1.03</waypoint>
+          <waypoint>-2 -5.5 1.03</waypoint>
         </trajectory>
       </plugin>
       <link name="actor_collision_link">

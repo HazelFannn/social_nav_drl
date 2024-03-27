@@ -18,6 +18,7 @@ from std_srvs.srv import Empty
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 from tf.transformations import euler_from_quaternion
+from sklearn.cluster import DBSCAN
 
 GOAL_REACHED_DIST = 0.3
 COLLISION_DIST = 0.35
@@ -170,53 +171,61 @@ class GazeboEnv:
         self.velodyne = rospy.Subscriber(
             "/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1
         )
-        # add for dynamic obstacle detection
-        self.previous_velodyne_data = np.ones(self.environment_dim) * 10
-        self.previous_odom = None
-        
         self.odom = rospy.Subscriber(
             "/r1/odom", Odometry, self.odom_callback, queue_size=1
         )
 
-    # # define the function to convert PointCloud2 data into a Python list of points
-    # def convert_pc2_to_xyz(self, point_cloud):
-    #     points_list = []
-    #     for point in pc2.read_points(point_cloud, skip_nans=True, field_names=("x", "y", "z")):
-    #         points_list.append((point[0], point[1], point[2]))
-            
-    #     return points_list
+    # def preprocess_velodyne_data(self, data):
+    #     velodyne_array = np.array(data)
 
-    # # implement relayive movement calculation to detect dynamic obstacles
-    # def detect_dynamics(self, current_pts, previous_pts, movement_threshold=0.2, detection_distance=1.0):
-    #     if len(previous_pts) == 0:
-    #         return False
+    #     filtered_points = velodyne_array[velodyne_array[:, 2] > 0.1]
+    #     return filtered_points
+    
+    # def cluster_points(self, points):
+    #     db = DBSCAN(eps=0.5, min_samples=5).fit(points[:, :2])
+    #     labels = db.labels_
+
+    #     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+
+    #     clusters = []
+    #     for k in range(n_clusters_):
+    #         class_member_mask = (labels == k)
+    #         clusters.append(points[class_member_mask])
+    #     return clusters
+    
+    # def calculate_cluster_centroid(self, cluster):
+    #     return np.mean(cluster, axis=0)
+    
+    # def identify_moving_clusters(self, current_clusters, previous_clusters):
+    #     moving_clusters = []
+    #     movement_threshold = 1.0  # Define a threshold for movement (in meters)
         
-    #     previous_pts_array = np.array(previous_pts)
-    #     dynamic_obstacle_detected = False
-
-    #     for current_pt in current_pts:
-    #         distances_to_previous_pts = np.linalg.norm(previous_pts_array - np.array(current_pt), axis=1)
+    #     # Calculate centroids for current clusters
+    #     current_centroids = [self.calculate_cluster_centroid(cluster) for cluster in current_clusters]
+        
+    #     if previous_clusters is not None:  # Check if there are previous clusters to compare with
+    #         # Calculate centroids for previous clusters
+    #         previous_centroids = [self.calculate_cluster_centroid(cluster) for cluster in previous_clusters]
             
-    #         # Check if the point moved beyond the movement threshold (indicating dynamic)
-    #         # and is within the detection distance
-    #         if np.min(distances_to_previous_pts) > movement_threshold:
-    #             distance_to_robot = np.linalg.norm(np.array([self.odom_x, self.odom_y]) - np.array(current_pt[:2]))
-    #             if distance_to_robot <= detection_distance:
-    #                 dynamic_obstacle_detected = True
-    #                 break  # Stop checking if at least one dynamic obstacle is detected within range
+    #         # Compare each current centroid with each previous centroid to find the closest match
+    #         for curr_centroid in current_centroids:
+    #             for prev_centroid in previous_centroids:
+    #                 displacement = np.linalg.norm(curr_centroid[:2] - prev_centroid[:2])  # Compare x, y positions only
 
-    #     return dynamic_obstacle_detected
+    #                 print("The displacement is: ", displacement) # Debugging print
+    #                 if displacement > movement_threshold:
+    #                     print("Dynamic obstacle detected!")
+    #                     moving_clusters.append(curr_centroid)  # Consider adding more info if needed
+    #                     break  # Move to the next cluster once a match is found
+        
+    #     self.previous_clusters = current_clusters  # Update previous_clusters for the next call
+    #     return moving_clusters
 
     # Read velodyne pointcloud and turn it into distance data, then select the minimum value for each angle
     # range as state representation
     def velodyne_callback(self, v):
-        # # for dynamic detection
-        # if self.previous_velodyne_data is None:
-        #     self.previous_velodyne_data = np.ones(self.environment_dim) * 10
-
         data = list(pc2.read_points(v, skip_nans=False, field_names=("x", "y", "z")))
         self.velodyne_data = np.ones(self.environment_dim) * 10
-
         for i in range(len(data)):
             if data[i][2] > -0.2:
                 dot = data[i][0] * 1 + data[i][1] * 0
@@ -229,16 +238,20 @@ class GazeboEnv:
                     if self.gaps[j][0] <= beta < self.gaps[j][1]:
                         self.velodyne_data[j] = min(self.velodyne_data[j], dist)
                         break
-
-        # self.previous_velodyne_data = np.copy(self.velodyne_data)
+        # data = np.array(list(pc2.read_points(v, skip_nans=True, field_names=("x", "y", "z"))))
+    
+        # # Preprocess and cluster
+        # filtered_data = self.preprocess_velodyne_data(data)
+        # self.current_clusters = self.cluster_points(filtered_data)
+        
+        # # Detect moving clusters if it's not the first callback call
+        # if hasattr(self, 'previous_clusters'):
+        #     self.identify_moving_clusters(self.current_clusters, self.previous_clusters)
+        
+        # # Update previous clusters for next callback call
+        # self.previous_clusters = self.current_clusters.copy()
 
     def odom_callback(self, od_data):
-        if self.previous_odom is None:
-            self.previous_odom = od_data
-        else:
-            # Update last_odom and previous_odom for subsequent messages
-            self.previous_odom = self.last_odom
-
         self.last_odom = od_data
 
     # Perform an action and read a new state
@@ -519,92 +532,78 @@ class GazeboEnv:
 
         markerArray3.markers.append(marker3)
         self.publisher3.publish(markerArray3)
-
-    
-    # def observe_dynamics(self, laser_data):
-    #     # Detect a collision from laser data
-    #     min_laser = min(laser_data)
-
-    #     # detect potential dynamic obstacles
-    #     if self.previous_min_laser is not None:
-    #         distance_change = abs(min_laser - self.previous_min_laser)
-
-    #         if distance_change > 0.3 and min_laser < 1.0:
-    #             print("Dynamic obstacle detected within 1 meter!")
-
-    #     self.previous_min_laser = min_laser
         
-    def detect_dynamics(self):
-        # print("Entered detect_dynamics function.")
-        if self.last_odom is not None and self.previous_odom is not None:
-            # print("Entered detect_dynamics function.")
-            # print(f"Last odom: {self.last_odom}, Previous odom: {self.previous_odom}")  # Debugging print
+    # def detect_dynamics(self):
+    #     # print("Entered detect_dynamics function.")
+    #     if self.last_odom is not None and self.previous_odom is not None:
+    #         # print("Entered detect_dynamics function.")
+    #         # print(f"Last odom: {self.last_odom}, Previous odom: {self.previous_odom}")  # Debugging print
 
-            # Calculate the robot's movement since the last frame
-            delta_x = self.last_odom.pose.pose.position.x - self.previous_odom.pose.pose.position.x
-            delta_y = self.last_odom.pose.pose.position.y - self.previous_odom.pose.pose.position.y
-            delta_yaw = self.calculate_yaw_difference(self.last_odom, self.previous_odom)
+    #         # Calculate the robot's movement since the last frame
+    #         delta_x = self.last_odom.pose.pose.position.x - self.previous_odom.pose.pose.position.x
+    #         delta_y = self.last_odom.pose.pose.position.y - self.previous_odom.pose.pose.position.y
+    #         delta_yaw = self.calculate_yaw_difference(self.last_odom, self.previous_odom)
             
-            # Adjust the point cloud data for the robot's movement
-            adjusted_velodyne_data = self.adjust_for_robot_movement(self.velodyne_data, delta_x, delta_y, delta_yaw)
+    #         # Adjust the point cloud data for the robot's movement
+    #         adjusted_velodyne_data = self.adjust_for_robot_movement(self.velodyne_data, delta_x, delta_y, delta_yaw)
             
-            # Threshold for movement to consider an obstacle as dynamic
-            movement_threshold = 0.2  # meters; adjust based on your application needs
+    #         # Threshold for movement to consider an obstacle as dynamic
+    #         movement_threshold = 0.2  # meters; adjust based on your application needs
             
-            # Calculate the difference between the adjusted current and previous frames
-            movement = np.abs(adjusted_velodyne_data - self.previous_velodyne_data)
+    #         # Calculate the difference between the adjusted current and previous frames
+    #         movement = np.abs(adjusted_velodyne_data - self.previous_velodyne_data)
 
-            print(f"Delta X: {delta_x}, Delta Y: {delta_y}, Delta Yaw: {delta_yaw}")  # Debugging print
-            print(f"Adjusted velodyne data: {adjusted_velodyne_data}")  # Debugging print
-            print(f"Previous velodyne data: {self.previous_velodyne_data}")  # Debugging print
-            print(f"Movement: {movement}")  # Debugging print
+    #         print(f"Delta X: {delta_x}, Delta Y: {delta_y}, Delta Yaw: {delta_yaw}")  # Debugging print
+    #         print(f"Adjusted velodyne data: {adjusted_velodyne_data}")  # Debugging print
+    #         print(f"Previous velodyne data: {self.previous_velodyne_data}")  # Debugging print
+    #         print(f"Movement: {movement}")  # Debugging print
             
-            # Identify dynamic obstacles
-            dynamic_obstacles = movement > movement_threshold
-            if np.any(dynamic_obstacles):
-                print("dynamic obstacle detected!!!!")
-            else:
-                print("No dynamic obstacle detected.")  # For debugging, to confirm function execution
+    #         # Identify dynamic obstacles
+    #         dynamic_obstacles = movement > movement_threshold
+    #         if np.any(dynamic_obstacles):
+    #             print("dynamic obstacle detected!!!!")
+    #         else:
+    #             print("No dynamic obstacle detected.")  # For debugging, to confirm function execution
             
-            # Update the previous data for the next comparison
-            self.previous_velodyne_data = np.copy(self.velodyne_data)
-            self.previous_odom = copy.deepcopy(self.last_odom)
+    #         # Update the previous data for the next comparison
+    #         self.previous_velodyne_data = np.copy(self.velodyne_data)
+    #         self.previous_odom = copy.deepcopy(self.last_odom)
 
-    def calculate_yaw_difference(self, current_odom, previous_odom):
-        # Extract the quaternion tuples
-        current_orientation = (
-            current_odom.pose.pose.orientation.x,
-            current_odom.pose.pose.orientation.y,
-            current_odom.pose.pose.orientation.z,
-            current_odom.pose.pose.orientation.w,
-        )
-        previous_orientation = (
-            previous_odom.pose.pose.orientation.x,
-            previous_odom.pose.pose.orientation.y,
-            previous_odom.pose.pose.orientation.z,
-            previous_odom.pose.pose.orientation.w,
-        )
+    # def calculate_yaw_difference(self, current_odom, previous_odom):
+    #     # Extract the quaternion tuples
+    #     current_orientation = (
+    #         current_odom.pose.pose.orientation.x,
+    #         current_odom.pose.pose.orientation.y,
+    #         current_odom.pose.pose.orientation.z,
+    #         current_odom.pose.pose.orientation.w,
+    #     )
+    #     previous_orientation = (
+    #         previous_odom.pose.pose.orientation.x,
+    #         previous_odom.pose.pose.orientation.y,
+    #         previous_odom.pose.pose.orientation.z,
+    #         previous_odom.pose.pose.orientation.w,
+    #     )
 
-        # Convert quaternions to Euler angles
-        _, _, current_yaw = euler_from_quaternion(current_orientation)
-        _, _, previous_yaw = euler_from_quaternion(previous_orientation)
+    #     # Convert quaternions to Euler angles
+    #     _, _, current_yaw = euler_from_quaternion(current_orientation)
+    #     _, _, previous_yaw = euler_from_quaternion(previous_orientation)
 
-        # Calculate the difference in yaw
-        yaw_difference = current_yaw - previous_yaw
+    #     # Calculate the difference in yaw
+    #     yaw_difference = current_yaw - previous_yaw
 
-        # Normalize the difference to be within -pi to pi
-        yaw_difference = (yaw_difference + np.pi) % (2 * np.pi) - np.pi
+    #     # Normalize the difference to be within -pi to pi
+    #     yaw_difference = (yaw_difference + np.pi) % (2 * np.pi) - np.pi
 
-        return yaw_difference
+    #     return yaw_difference
     
-    def adjust_for_robot_movement(self, velodyne_data, delta_x, delta_y, delta_yaw):
-        # assume a very basic adjustment where rotation affects the index of the minimum distance
-        # and translation affects the magnitude of distances slightly
-        adjusted_data = np.roll(velodyne_data, int(delta_yaw * len(velodyne_data) / (2 * np.pi)))
-        translation_effect = np.sqrt(delta_x ** 2 + delta_y ** 2)  # Simplified effect of translation
-        adjusted_data = np.clip(adjusted_data - translation_effect, 0, None)  # Assuming closer objects due to forward movement
+    # def adjust_for_robot_movement(self, velodyne_data, delta_x, delta_y, delta_yaw):
+    #     # assume a very basic adjustment where rotation affects the index of the minimum distance
+    #     # and translation affects the magnitude of distances slightly
+    #     adjusted_data = np.roll(velodyne_data, int(delta_yaw * len(velodyne_data) / (2 * np.pi)))
+    #     translation_effect = np.sqrt(delta_x ** 2 + delta_y ** 2)  # Simplified effect of translation
+    #     adjusted_data = np.clip(adjusted_data - translation_effect, 0, None)  # Assuming closer objects due to forward movement
 
-        return adjusted_data
+    #     return adjusted_data
     
     @staticmethod
     def observe_collision(laser_data):
