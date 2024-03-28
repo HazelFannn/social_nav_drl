@@ -122,6 +122,8 @@ class GazeboEnv:
         self.lower = -5.0
         self.velodyne_data = np.ones(self.environment_dim) * 10
         self.last_odom = None
+        # For reward function
+        self.last_action = [0.0, 0.0]
 
         self.set_self_state = ModelState()
         self.set_self_state.model_name = "r1"
@@ -337,7 +339,8 @@ class GazeboEnv:
 
         robot_state = [distance, theta, action[0], action[1]]
         state = np.append(laser_state, robot_state)
-        reward = self.get_reward(target, collision, action, min_laser)
+        reward = self.get_reward(target, collision, action, min_laser, self.last_action)
+        self.last_action = action.copy()
         return state, reward, done, target
 
     def reset(self):
@@ -615,11 +618,18 @@ class GazeboEnv:
         return False, False, min_laser
 
     @staticmethod
-    def get_reward(target, collision, action, min_laser):
+    def get_reward(target, collision, action, min_laser, last_action):
         if target:
-            return 100.0
+            immediate_reward = 100.0
         elif collision:
-            return -100.0
+            immediate_reward = -100.0
         else:
-            r3 = lambda x: 1 - x if x < 1 else 0.0
-            return action[0] / 2 - abs(action[1]) / 2 - r3(min_laser) / 2
+            # r3 = lambda x: 1 - x if x < 1 else 0.0
+            immediate_reward = action[0] / 2 - abs(action[1]) / 2 - (1 - min_laser if min_laser < 1 else 0.0) / 2
+
+        # Calculate the smoothness penalty based on the change in action from the last step
+        change_in_linear_velocity = abs(action[0] - last_action[0])
+        change_in_angular_velocity = abs(action[1] - last_action[1])
+        smoothness_penalty = -(change_in_linear_velocity + change_in_angular_velocity * 2)
+
+        return immediate_reward + smoothness_penalty
