@@ -625,7 +625,7 @@ class GazeboEnv:
             immediate_reward = -100.0
         else:
             # r3 = lambda x: 1 - x if x < 1 else 0.0
-            immediate_reward = action[0] / 2 - abs(action[1]) / 2 - (1 - min_laser if min_laser < 1 else 0.0) / 2
+            immediate_reward = action[0] / 2 - abs(action[1]) / 2 - (np.exp(1 - min_laser) if min_laser < 1 else 0.0)
 
         # Calculate the smoothness penalty based on the change in action from the last step
         change_in_linear_velocity = abs(action[0] - last_action[0])
