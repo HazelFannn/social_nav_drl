@@ -29,23 +29,39 @@ TIME_DELTA = 0.1
 def check_pos(x, y):
     goal_ok = True
 
-    # For scenario 1
+    # # For scenario 1
+    # if -2.9 > x > -4.3 and 6.1 > y > 4.8: # cafe table
+    #     goal_ok = False
+
+    # if -1.9 > x > -3.3 and 4.1 > y > 2.8: # cafe table
+    #     goal_ok = False
+
+    # if -2.9 > x > -4.3 and 2.1 > y > 0.8: # cafe table
+    #     goal_ok = False
+
+    # if 4.6 > x > 0.4 and 3.6 > y > 1.4: # brick box
+    #     goal_ok = False
+
+    # if 1.2 > x > -1.2 and -1.5 > y > -3.5: # table
+    #     goal_ok = False
+
+    # if 1.2 > x > -1.2 and -4.5 > y > -6.5: # table
+    #     goal_ok = False
+
+    # if 4.5 > x > 4.0 and -3.0 > y > -5.0: # bookshelf
+    #     goal_ok = False
+
+    # if x > 4.5 or x < -4.5 or y > 6.5 or y < -6.5:
+    #     goal_ok = False
+
+    # For scenario 5
     if -2.9 > x > -4.3 and 6.1 > y > 4.8: # cafe table
         goal_ok = False
 
-    if -1.9 > x > -3.3 and 4.1 > y > 2.8: # cafe table
+    if 0.0 > x > -5.0 and -1.0 > y > -4.0: # brick box
         goal_ok = False
 
-    if -2.9 > x > -4.3 and 2.1 > y > 0.8: # cafe table
-        goal_ok = False
-
-    if 4.6 > x > 0.4 and 3.6 > y > 1.4: # brick box
-        goal_ok = False
-
-    if 1.2 > x > -1.2 and -1.5 > y > -3.5: # table
-        goal_ok = False
-
-    if 1.2 > x > -1.2 and -4.5 > y > -6.5: # table
+    if 2.5 > x > 0.5 and 4.5 > y > 2.5: # construction barrel
         goal_ok = False
 
     if 4.5 > x > 4.0 and -3.0 > y > -5.0: # bookshelf

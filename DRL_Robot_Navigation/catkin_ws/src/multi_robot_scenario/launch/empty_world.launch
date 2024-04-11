@@ -13,7 +13,7 @@
   <arg name="debug" default="false"/>
   <arg name="physics" default="ode"/>
   <arg name="verbose" default="false"/>
-  <arg name="world_name" default="scenario4.world"/>
+  <arg name="world_name" default="scenario5.world"/>
   <arg name="respawn_gazebo" default="true"/>
   <arg name="use_clock_frequency" default="false"/>
   <arg name="pub_clock_frequency" default="1000"/>
