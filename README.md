@@ -28,3 +28,18 @@ This docker environment is based on the Nvidia PyTorch container Release 20.10. 
 * TensorBoard 1.15.0+nv
 
 and more. The complete documentation can be found here: https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel_20-10.html
+
+All docker-related files can be found here:
+```bash
+$ cd ~/catkin_ws/src/social_nav_drl/docker
+```
+
+Build the docker image if any modifications are made to the docker file:
+```bash
+$ bash build.bash
+```
+
+To run the docker container:
+```bash
+$ bash drl.bash
+```
