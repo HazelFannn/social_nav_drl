@@ -43,3 +43,27 @@ To run the docker container:
 ```bash
 $ bash drl.bash
 ```
+
+## Usage
+
+After running the docker container, the default work directory is set to `/catkin_ws`. First, compile the workspace:
+```shell
+$ catkin_make
+$ source devel/setup.bash
+```
+
+All simulation scenarios can be found here:
+```shell
+$ cd /catkin_ws/src/social_nav_drl/gazebo_sfm_plugins/worlds/
+```
+
+To change the simulation settings for training or testing:
+```shell
+$ cd /catkin_ws/src/social_nav_drl/DRL_Robot_Navigation/catkin_ws/src/
+```
+
+To run the training:
+```shell
+$ cd /catkin_ws/src/social_nav_drl/DRL_Robot_Navigation/TD3
+$ python3 train_velodyne_td3.py
+```

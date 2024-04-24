@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 #out
-*.pth
+# *.pth
 *.npy
 runs/
 /CMakeLists.txt
